@@ -1,12 +1,16 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 
 <meta charset="UTF-8">
 <meta name="viewport"
-content="width=device-width,initial-scale=1.0">
+content="width=device-width,
+initial-scale=1.0,
+maximum-scale=1.0,
+user-scalable=no">
 
-<title>Advanced QR & Barcode Scanner</title>
+<title>Mobile QR & Barcode Scanner</title>
 
 <style>
 
@@ -15,11 +19,11 @@ content="width=device-width,initial-scale=1.0">
     --fg:#e2e8f0;
     --accent:#22d3ee;
     --green:#22c55e;
-    --red:#ef4444;
 }
 
 *{
     box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
 }
 
 body{
@@ -27,22 +31,23 @@ body{
     background:var(--bg);
     color:var(--fg);
     font-family:Arial,sans-serif;
-    text-align:center;
+    overflow-x:hidden;
 }
 
-h2{
-    margin-top:15px;
+header{
+    text-align:center;
+    padding:12px;
+    font-size:20px;
+    font-weight:bold;
+    color:var(--accent);
 }
 
 #frameWrap{
     position:relative;
-    width:100%;
-    max-width:600px;
-    margin:auto;
-    border-radius:15px;
-    overflow:hidden;
-    border:2px solid var(--accent);
+    width:100vw;
+    height:58vh;
     background:black;
+    overflow:hidden;
 }
 
 #video{
@@ -51,6 +56,8 @@ h2{
 
 #view{
     width:100%;
+    height:100%;
+    object-fit:cover;
     display:block;
 }
 
@@ -63,22 +70,46 @@ h2{
     pointer-events:none;
 }
 
-/* animated scan line */
+/* ROI */
+
+#roi{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:65vw;
+    max-width:280px;
+    aspect-ratio:1;
+    border:3px solid #22c55e;
+    border-radius:20px;
+    box-shadow:
+    0 0 15px #22c55e;
+}
+
+/* scan line */
 
 #scanline{
     position:absolute;
-    left:0;
-    width:100%;
+    left:50%;
+    transform:translateX(-50%);
+    width:65vw;
+    max-width:280px;
     height:3px;
-    background:var(--green);
-    box-shadow:0 0 10px var(--green);
+    background:#22c55e;
+    box-shadow:0 0 10px #22c55e;
     animation:scan 2s linear infinite;
 }
 
 @keyframes scan{
-    0%{ top:10%; }
-    50%{ top:85%; }
-    100%{ top:10%; }
+    0%{
+        top:calc(50% - 120px);
+    }
+    50%{
+        top:calc(50% + 120px);
+    }
+    100%{
+        top:calc(50% - 120px);
+    }
 }
 
 /* popup */
@@ -86,70 +117,69 @@ h2{
 #popup{
     position:absolute;
     left:50%;
-    bottom:20px;
+    bottom:18px;
     transform:translateX(-50%);
     background:rgba(0,0,0,0.85);
-    color:var(--green);
-    padding:12px 18px;
+    color:#22c55e;
+    padding:12px 16px;
     border-radius:12px;
-    border:2px solid var(--green);
-    max-width:90%;
+    border:2px solid #22c55e;
+    width:90%;
+    max-width:400px;
+    text-align:center;
+    font-size:15px;
     word-wrap:break-word;
     display:none;
-    animation:pop 0.2s ease;
 }
 
-@keyframes pop{
-    from{
-        opacity:0;
-        transform:translateX(-50%) scale(0.8);
-    }
-    to{
-        opacity:1;
-        transform:translateX(-50%) scale(1);
-    }
-}
+/* controls */
 
 .controls{
-    margin-top:15px;
+    padding:12px;
 }
 
-select,button{
-    margin:5px;
-    padding:12px;
+select{
+    width:100%;
+    padding:14px;
+    border-radius:12px;
     border:none;
-    border-radius:10px;
+    background:#111827;
+    color:white;
     font-size:16px;
+    margin-bottom:10px;
+}
+
+.buttons{
+    display:grid;
+    grid-template-columns:
+    repeat(2,1fr);
+    gap:10px;
 }
 
 button{
+    padding:14px;
+    border:none;
+    border-radius:12px;
     background:#111827;
     color:white;
-    border:1px solid #334155;
+    font-size:16px;
 }
 
-button:hover{
-    border-color:var(--accent);
+button:active{
+    transform:scale(0.97);
 }
 
 #history{
-    margin:20px auto;
-    width:95%;
-    max-width:600px;
-    text-align:left;
-    background:#111827;
-    border-radius:12px;
-    padding:10px;
+    padding:12px;
 }
 
 .historyItem{
+    background:#111827;
+    margin-bottom:8px;
     padding:10px;
-    border-bottom:1px solid #334155;
-    word-wrap:break-word;
-}
-
-.mirror{
-    transform:scaleX(-1);
+    border-radius:10px;
+    font-size:14px;
+    word-break:break-word;
 }
 
 </style>
@@ -159,9 +189,10 @@ button:hover{
 import {
 BrowserMultiFormatReader
 }
-from "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
+from
+"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
 
-window.codeReader =
+window.reader =
 new BrowserMultiFormatReader();
 
 </script>
@@ -170,15 +201,20 @@ new BrowserMultiFormatReader();
 
 <body>
 
-<h2>Advanced QR & Barcode Scanner</h2>
+<header>
+QR & Barcode Scanner
+</header>
 
 <div id="frameWrap">
 
-    <video id="video" playsinline></video>
+    <video id="video"
+    playsinline></video>
 
     <canvas id="view"></canvas>
 
     <canvas id="overlay"></canvas>
+
+    <div id="roi"></div>
 
     <div id="scanline"></div>
 
@@ -190,13 +226,25 @@ new BrowserMultiFormatReader();
 
     <select id="cameraSelect"></select>
 
-    <br>
+    <div class="buttons">
 
-    <button id="startBtn">Start</button>
-    <button id="stopBtn">Stop</button>
-    <button id="torchBtn">Torch</button>
-    <button id="mirrorBtn">Mirror</button>
-    <button id="fullscreenBtn">Fullscreen</button>
+        <button id="startBtn">
+        Start
+        </button>
+
+        <button id="stopBtn">
+        Stop
+        </button>
+
+        <button id="torchBtn">
+        Torch
+        </button>
+
+        <button id="mirrorBtn">
+        Mirror
+        </button>
+
+    </div>
 
 </div>
 
@@ -210,32 +258,39 @@ new BrowserMultiFormatReader();
 
 <script type="module">
 
-const video=document.getElementById("video");
-const view=document.getElementById("view");
-const overlay=document.getElementById("overlay");
+const video=
+document.getElementById("video");
 
-const vctx=view.getContext("2d");
-const ctx=overlay.getContext("2d");
+const view=
+document.getElementById("view");
 
-const popup=document.getElementById("popup");
+const overlay=
+document.getElementById("overlay");
+
+const vctx=
+view.getContext("2d");
+
+const ctx=
+overlay.getContext("2d");
+
+const popup=
+document.getElementById("popup");
 
 const cameraSelect=
 document.getElementById("cameraSelect");
 
-const codeReader=window.codeReader;
+const codeReader=
+window.reader;
 
 let stream=null;
 let track=null;
 
-let vw=0;
-let vh=0;
-
 let mirror=false;
 let torch=false;
 
-let renderRunning=false;
+let renderRun=false;
 
-let lastScan="";
+let lastText="";
 
 /* ---------- SOUND ---------- */
 
@@ -245,22 +300,30 @@ function beep(){
     new(window.AudioContext||
     window.webkitAudioContext)();
 
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
+    const osc=
+    audioCtx.createOscillator();
+
+    const gain=
+    audioCtx.createGain();
 
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+
+    gain.connect(
+        audioCtx.destination
+    );
 
     osc.frequency.value=1200;
-    osc.type="sine";
 
     gain.gain.value=0.2;
 
     osc.start();
 
     setTimeout(()=>{
+
         osc.stop();
+
         audioCtx.close();
+
     },120);
 }
 
@@ -272,10 +335,15 @@ function showPopup(text){
 
     popup.style.display="block";
 
-    clearTimeout(popup.timer);
+    clearTimeout(
+        popup.timer
+    );
 
-    popup.timer=setTimeout(()=>{
+    popup.timer=
+    setTimeout(()=>{
+
         popup.style.display="none";
+
     },3000);
 }
 
@@ -283,56 +351,95 @@ function showPopup(text){
 
 function addHistory(text){
 
-    const div=document.createElement("div");
+    const div=
+    document.createElement("div");
 
-    div.className="historyItem";
+    div.className=
+    "historyItem";
 
     div.innerHTML=
-    "<b>"+new Date().toLocaleTimeString()+
+    "<b>"+
+    new Date()
+    .toLocaleTimeString()+
     "</b><br>"+text;
 
-    const historyList=
-    document.getElementById("historyList");
-
-    historyList.prepend(div);
+    document
+    .getElementById(
+    "historyList"
+    )
+    .prepend(div);
 }
 
-/* ---------- CAMERA ---------- */
+/* ---------- LOAD CAMERAS ---------- */
 
 async function loadCameras(){
 
-    const devices=
-    await navigator.mediaDevices
-    .enumerateDevices();
+    try{
 
-    const cams=devices.filter(
-        d=>d.kind==="videoinput"
-    );
+        // ask permission FIRST
+        const temp=
+        await navigator
+        .mediaDevices
+        .getUserMedia({
+            video:true
+        });
 
-    cameraSelect.innerHTML="";
+        temp.getTracks()
+        .forEach(t=>t.stop());
 
-    cams.forEach((cam,index)=>{
+        const devices=
+        await navigator
+        .mediaDevices
+        .enumerateDevices();
 
-        const option=
-        document.createElement("option");
+        const cams=
+        devices.filter(d=>
+        d.kind==="videoinput"
+        );
 
-        option.value=cam.deviceId;
+        cameraSelect.innerHTML="";
 
-        option.textContent=
-        cam.label ||
-        "Camera "+(index+1);
+        cams.forEach((cam,index)=>{
 
-        cameraSelect.appendChild(option);
-    });
+            const option=
+            document.createElement(
+            "option"
+            );
 
-    // auto select back camera
+            option.value=
+            cam.deviceId;
 
-    const backCam=cams.find(c=>
-    c.label.toLowerCase()
-    .includes("back"));
+            option.textContent=
+            cam.label ||
+            "Camera "+
+            (index+1);
 
-    if(backCam){
-        cameraSelect.value=backCam.deviceId;
+            cameraSelect
+            .appendChild(
+            option
+            );
+        });
+
+        // auto choose back camera
+
+        const backCam=
+        cams.find(c=>
+        c.label
+        .toLowerCase()
+        .includes("back")
+        );
+
+        if(backCam){
+
+            cameraSelect.value=
+            backCam.deviceId;
+        }
+
+    }catch(err){
+
+        alert(
+        "Camera Permission Needed"
+        );
     }
 }
 
@@ -344,15 +451,26 @@ async function startScanner(){
 
     try{
 
-        stream=await
-        navigator.mediaDevices
+        const selectedCamera=
+        cameraSelect.value;
+
+        stream=
+        await navigator
+        .mediaDevices
         .getUserMedia({
 
             video:{
-                deviceId:{
+
+                deviceId:
+                selectedCamera
+                ? {
                     exact:
-                    cameraSelect.value
-                }
+                    selectedCamera
+                  }
+                : undefined,
+
+                facingMode:
+                "environment"
             }
         });
 
@@ -360,88 +478,75 @@ async function startScanner(){
 
         await video.play();
 
-        track=stream
-        .getVideoTracks()[0];
+        track=
+        stream.getVideoTracks()[0];
 
-        vw=video.videoWidth;
-        vh=video.videoHeight;
+        view.width=
+        video.videoWidth;
 
-        view.width=vw;
-        view.height=vh;
+        view.height=
+        video.videoHeight;
 
-        overlay.width=vw;
-        overlay.height=vh;
+        overlay.width=
+        view.width;
+
+        overlay.height=
+        view.height;
 
         renderLoop();
 
-        codeReader.decodeFromVideoDevice(
-            null,
-            video,
-            (result)=>{
+        codeReader
+        .decodeFromVideoDevice(
+        undefined,
+        video,
+        (result)=>{
 
-                if(result){
+            if(result){
 
-                    const text=result.text;
+                const text=
+                result.text;
 
-                    if(text===lastScan){
-                        return;
-                    }
-
-                    lastScan=text;
-
-                    drawBox(
-                        result.resultPoints
-                    );
-
-                    showPopup(text);
-
-                    addHistory(text);
-
-                    beep();
-
-                    if(navigator.vibrate){
-                        navigator.vibrate(
-                            [120,50,120]
-                        );
-                    }
-
-                    // auto copy
-
-                    navigator.clipboard
-                    .writeText(text);
-
-                    // auto open URL
-
-                    if(
-                    text.startsWith("http")
-                    ){
-
-                        setTimeout(()=>{
-
-                            if(confirm(
-                            "Open URL?\n\n"
-                            +text
-                            )){
-
-                                window.open(
-                                text,
-                                "_blank"
-                                );
-
-                            }
-
-                        },200);
-                    }
-
-                    setTimeout(()=>{
-                        lastScan="";
-                    },2000);
+                if(
+                text===lastText
+                ){
+                    return;
                 }
-            });
+
+                lastText=text;
+
+                drawBox(
+                result.resultPoints
+                );
+
+                showPopup(text);
+
+                addHistory(text);
+
+                beep();
+
+                if(
+                navigator.vibrate
+                ){
+                    navigator.vibrate(
+                    [120,50,120]
+                    );
+                }
+
+                navigator
+                .clipboard
+                .writeText(text);
+
+                setTimeout(()=>{
+                    lastText="";
+                },2000);
+            }
+        });
 
     }catch(err){
 
-        alert(err);
+        alert(
+        "Start Error:\n"+err
+        );
     }
 }
 
@@ -455,24 +560,25 @@ function stopScanner(){
 
     if(stream){
 
-        stream.getTracks()
+        stream
+        .getTracks()
         .forEach(t=>t.stop());
 
         stream=null;
     }
 
-    renderRunning=false;
+    renderRun=false;
 }
 
 /* ---------- RENDER ---------- */
 
 function renderLoop(){
 
-    renderRunning=true;
+    renderRun=true;
 
     function loop(){
 
-        if(!renderRunning){
+        if(!renderRun){
             return;
         }
 
@@ -482,7 +588,10 @@ function renderLoop(){
 
             vctx.save();
 
-            vctx.translate(view.width,0);
+            vctx.translate(
+            view.width,
+            0
+            );
 
             vctx.scale(-1,1);
 
@@ -522,17 +631,18 @@ function drawBox(points){
         overlay.height
     );
 
-    if(!points || points.length<2){
+    if(!points){
         return;
     }
 
-    ctx.strokeStyle="#22c55e";
+    ctx.strokeStyle=
+    "#22c55e";
 
-    ctx.lineWidth=4;
+    ctx.lineWidth=5;
 
     ctx.beginPath();
 
-    points.forEach((p,index)=>{
+    points.forEach((p,i)=>{
 
         let x=p.x;
         let y=p.y;
@@ -541,7 +651,7 @@ function drawBox(points){
             x=overlay.width-x;
         }
 
-        if(index===0){
+        if(i===0){
             ctx.moveTo(x,y);
         }else{
             ctx.lineTo(x,y);
@@ -553,12 +663,14 @@ function drawBox(points){
     ctx.stroke();
 
     setTimeout(()=>{
+
         ctx.clearRect(
             0,
             0,
             overlay.width,
             overlay.height
         );
+
     },500);
 }
 
@@ -597,49 +709,38 @@ function toggleMirror(){
 
     mirror=!mirror;
 
-    if(mirror){
-        showPopup("Mirror ON");
-    }else{
-        showPopup("Mirror OFF");
-    }
-}
-
-/* ---------- FULLSCREEN ---------- */
-
-function toggleFullscreen(){
-
-    if(!document.fullscreenElement){
-
-        document.documentElement
-        .requestFullscreen();
-
-    }else{
-
-        document.exitFullscreen();
-    }
+    showPopup(
+    mirror
+    ? "Mirror ON"
+    : "Mirror OFF"
+    );
 }
 
 /* ---------- EVENTS ---------- */
 
 document
-.getElementById("startBtn")
+.getElementById(
+"startBtn"
+)
 .onclick=startScanner;
 
 document
-.getElementById("stopBtn")
+.getElementById(
+"stopBtn"
+)
 .onclick=stopScanner;
 
 document
-.getElementById("torchBtn")
+.getElementById(
+"torchBtn"
+)
 .onclick=toggleTorch;
 
 document
-.getElementById("mirrorBtn")
+.getElementById(
+"mirrorBtn"
+)
 .onclick=toggleMirror;
-
-document
-.getElementById("fullscreenBtn")
-.onclick=toggleFullscreen;
 
 /* ---------- INIT ---------- */
 
@@ -649,3 +750,4 @@ loadCameras();
 
 </body>
 </html>
+```
