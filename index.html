@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>QR & Barcode Scanner</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#111;
+    color:white;
+    text-align:center;
+}
+
+h2{
+    margin-top:15px;
+}
+
+#reader{
+    width:100%;
+    max-width:500px;
+    margin:auto;
+    border:3px solid #00ff88;
+    border-radius:12px;
+    overflow:hidden;
+}
+
+#result{
+    margin-top:20px;
+    padding:15px;
+    font-size:20px;
+    background:#222;
+    border-top:2px solid #00ff88;
+    word-wrap:break-word;
+}
+
+button{
+    margin:10px;
+    padding:12px 20px;
+    font-size:18px;
+    border:none;
+    border-radius:10px;
+    background:#00aa66;
+    color:white;
+}
+
+button:hover{
+    background:#00cc77;
+}
+</style>
+</head>
+
+<body>
+
+<h2>QR / Barcode Scanner</h2>
+
+<div id="reader"></div>
+
+<div id="result">
+Waiting for scan...
+</div>
+
+<button onclick="startScanner()">Start Scanner</button>
+<button onclick="stopScanner()">Stop Scanner</button>
+
+<script>
+
+let html5QrCode;
+
+function onScanSuccess(decodedText, decodedResult) {
+
+    document.getElementById("result").innerHTML =
+        "<b>Detected:</b><br>" + decodedText;
+
+    // vibration on supported phones
+    if(navigator.vibrate){
+        navigator.vibrate(200);
+    }
+}
+
+function startScanner(){
+
+    html5QrCode = new Html5Qrcode("reader");
+
+    Html5Qrcode.getCameras().then(devices => {
+
+        if(devices && devices.length){
+
+            let cameraId = devices[0].id;
+
+            // use back camera if available
+            devices.forEach(device => {
+                if(device.label.toLowerCase().includes("back")){
+                    cameraId = device.id;
+                }
+            });
+
+            html5QrCode.start(
+                cameraId,
+                {
+                    fps: 10,
+                    qrbox: {
+                        width: 250,
+                        height: 250
+                    }
+                },
+                onScanSuccess
+            );
+        }
+
+    }).catch(err => {
+        alert("Camera Error: " + err);
+    });
+}
+
+function stopScanner(){
+
+    if(html5QrCode){
+        html5QrCode.stop().then(() => {
+            document.getElementById("result").innerHTML =
+                "Scanner stopped";
+        });
+    }
+}
+
+</script>
+
+</body>
+</html>
