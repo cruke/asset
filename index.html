@@ -22,13 +22,46 @@ h2{
     margin-top:15px;
 }
 
-#reader{
+#reader-container{
+    position:relative;
     width:100%;
     max-width:500px;
     margin:auto;
+}
+
+#reader{
+    width:100%;
     border:3px solid #00ff88;
     border-radius:12px;
     overflow:hidden;
+}
+
+#scanPopup{
+    position:absolute;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.85);
+    color:#00ff88;
+    padding:12px 18px;
+    border-radius:12px;
+    font-size:18px;
+    max-width:90%;
+    word-wrap:break-word;
+    display:none;
+    animation:popup 0.25s ease;
+    border:2px solid #00ff88;
+}
+
+@keyframes popup{
+    from{
+        opacity:0;
+        transform:translateX(-50%) scale(0.8);
+    }
+    to{
+        opacity:1;
+        transform:translateX(-50%) scale(1);
+    }
 }
 
 .controls{
@@ -52,12 +85,9 @@ button:hover{
     background:#00cc77;
 }
 
-#result{
-    margin-top:20px;
-    padding:15px;
-    background:#222;
-    font-size:18px;
-    word-wrap:break-word;
+#status{
+    margin-top:15px;
+    color:#ccc;
 }
 
 .mirror video{
@@ -71,7 +101,13 @@ button:hover{
 
 <h2>QR / Barcode Scanner</h2>
 
-<div id="reader"></div>
+<div id="reader-container">
+
+    <div id="reader"></div>
+
+    <div id="scanPopup"></div>
+
+</div>
 
 <div class="controls">
 
@@ -86,7 +122,7 @@ button:hover{
 
 </div>
 
-<div id="result">
+<div id="status">
 Waiting for scan...
 </div>
 
@@ -97,39 +133,111 @@ let cameras = [];
 let currentCameraId = "";
 let torchOn = false;
 let mirrorOn = false;
+let lastScanned = "";
 
 const reader = document.getElementById("reader");
+const popup = document.getElementById("scanPopup");
+
+/* ---------- SOUND ---------- */
+
+function playBeep(){
+
+    const audioCtx =
+        new(window.AudioContext ||
+              window.webkitAudioContext)();
+
+    const oscillator =
+        audioCtx.createOscillator();
+
+    const gainNode =
+        audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.frequency.value = 1200;
+    oscillator.type = "sine";
+
+    gainNode.gain.value = 0.2;
+
+    oscillator.start();
+
+    setTimeout(() => {
+        oscillator.stop();
+        audioCtx.close();
+    }, 120);
+}
+
+/* ---------- POPUP ---------- */
+
+function showPopup(text){
+
+    popup.innerHTML = text;
+
+    popup.style.display = "block";
+
+    clearTimeout(popup.hideTimer);
+
+    popup.hideTimer = setTimeout(() => {
+        popup.style.display = "none";
+    }, 3000);
+}
+
+/* ---------- SCAN SUCCESS ---------- */
 
 function onScanSuccess(decodedText){
 
-    document.getElementById("result").innerHTML =
-        "<b>Detected:</b><br>" + decodedText;
-
-    if(navigator.vibrate){
-        navigator.vibrate(200);
+    // prevent repeated same scan spam
+    if(decodedText === lastScanned){
+        return;
     }
+
+    lastScanned = decodedText;
+
+    showPopup(decodedText);
+
+    document.getElementById("status").innerHTML =
+        "Code detected";
+
+    /* vibration */
+    if(navigator.vibrate){
+        navigator.vibrate([120, 50, 120]);
+    }
+
+    /* beep sound */
+    playBeep();
+
+    // allow same code again after 2 sec
+    setTimeout(() => {
+        lastScanned = "";
+    }, 2000);
 }
+
+/* ---------- CAMERA LIST ---------- */
 
 async function loadCameras(){
 
     cameras = await Html5Qrcode.getCameras();
 
-    const select = document.getElementById("cameraSelect");
+    const select =
+        document.getElementById("cameraSelect");
 
     select.innerHTML = "";
 
     cameras.forEach((camera, index) => {
 
-        const option = document.createElement("option");
+        const option =
+            document.createElement("option");
 
         option.value = camera.id;
+
         option.text =
             camera.label || ("Camera " + (index + 1));
 
         select.appendChild(option);
     });
 
-    // auto select back camera
+    // Auto select back camera
     let backCamera = cameras.find(c =>
         c.label.toLowerCase().includes("back")
     );
@@ -138,6 +246,8 @@ async function loadCameras(){
         select.value = backCamera.id;
     }
 }
+
+/* ---------- START ---------- */
 
 async function startScanner(){
 
@@ -152,7 +262,8 @@ async function startScanner(){
         currentCameraId =
             document.getElementById("cameraSelect").value;
 
-        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode =
+            new Html5Qrcode("reader");
 
         await html5QrCode.start(
             currentCameraId,
@@ -166,7 +277,7 @@ async function startScanner(){
             onScanSuccess
         );
 
-        document.getElementById("result").innerHTML =
+        document.getElementById("status").innerHTML =
             "Scanner started";
 
     }catch(err){
@@ -175,23 +286,24 @@ async function startScanner(){
     }
 }
 
+/* ---------- STOP ---------- */
+
 async function stopScanner(){
 
     if(html5QrCode){
 
         await html5QrCode.stop();
 
-        document.getElementById("result").innerHTML =
+        document.getElementById("status").innerHTML =
             "Scanner stopped";
     }
 }
 
+/* ---------- TORCH ---------- */
+
 async function toggleTorch(){
 
     try{
-
-        const track =
-            html5QrCode.getRunningTrackSettings();
 
         const capabilities =
             html5QrCode.getRunningTrackCapabilities();
@@ -201,15 +313,16 @@ async function toggleTorch(){
             torchOn = !torchOn;
 
             await html5QrCode.applyVideoConstraints({
-                advanced: [{ torch: torchOn }]
+                advanced:[{ torch: torchOn }]
             });
 
-            document.getElementById("result").innerHTML =
-                torchOn ? "Torch ON" : "Torch OFF";
+            showPopup(
+                torchOn ? "Torch ON" : "Torch OFF"
+            );
 
         }else{
 
-            alert("Torch not supported on this device");
+            alert("Torch not supported");
         }
 
     }catch(err){
@@ -218,16 +331,27 @@ async function toggleTorch(){
     }
 }
 
+/* ---------- MIRROR ---------- */
+
 function toggleMirror(){
 
     mirrorOn = !mirrorOn;
 
     if(mirrorOn){
+
         reader.classList.add("mirror");
+
+        showPopup("Mirror ON");
+
     }else{
+
         reader.classList.remove("mirror");
+
+        showPopup("Mirror OFF");
     }
 }
+
+/* ---------- INIT ---------- */
 
 loadCameras();
 
