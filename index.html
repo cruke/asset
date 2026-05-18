@@ -9,11 +9,12 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
+
 body{
     margin:0;
-    font-family:Arial, sans-serif;
     background:#111;
     color:white;
+    font-family:Arial, sans-serif;
     text-align:center;
 }
 
@@ -30,21 +31,19 @@ h2{
     overflow:hidden;
 }
 
-#result{
-    margin-top:20px;
-    padding:15px;
-    font-size:20px;
-    background:#222;
-    border-top:2px solid #00ff88;
-    word-wrap:break-word;
+.controls{
+    margin-top:15px;
+}
+
+select, button{
+    margin:5px;
+    padding:12px;
+    font-size:16px;
+    border:none;
+    border-radius:10px;
 }
 
 button{
-    margin:10px;
-    padding:12px 20px;
-    font-size:18px;
-    border:none;
-    border-radius:10px;
     background:#00aa66;
     color:white;
 }
@@ -52,6 +51,19 @@ button{
 button:hover{
     background:#00cc77;
 }
+
+#result{
+    margin-top:20px;
+    padding:15px;
+    background:#222;
+    font-size:18px;
+    word-wrap:break-word;
+}
+
+.mirror video{
+    transform: scaleX(-1);
+}
+
 </style>
 </head>
 
@@ -61,72 +73,163 @@ button:hover{
 
 <div id="reader"></div>
 
+<div class="controls">
+
+    <select id="cameraSelect"></select>
+
+    <br>
+
+    <button onclick="startScanner()">Start</button>
+    <button onclick="stopScanner()">Stop</button>
+    <button onclick="toggleTorch()">Torch</button>
+    <button onclick="toggleMirror()">Mirror</button>
+
+</div>
+
 <div id="result">
 Waiting for scan...
 </div>
 
-<button onclick="startScanner()">Start Scanner</button>
-<button onclick="stopScanner()">Stop Scanner</button>
-
 <script>
 
 let html5QrCode;
+let cameras = [];
+let currentCameraId = "";
+let torchOn = false;
+let mirrorOn = false;
 
-function onScanSuccess(decodedText, decodedResult) {
+const reader = document.getElementById("reader");
+
+function onScanSuccess(decodedText){
 
     document.getElementById("result").innerHTML =
         "<b>Detected:</b><br>" + decodedText;
 
-    // vibration on supported phones
     if(navigator.vibrate){
         navigator.vibrate(200);
     }
 }
 
-function startScanner(){
+async function loadCameras(){
 
-    html5QrCode = new Html5Qrcode("reader");
+    cameras = await Html5Qrcode.getCameras();
 
-    Html5Qrcode.getCameras().then(devices => {
+    const select = document.getElementById("cameraSelect");
 
-        if(devices && devices.length){
+    select.innerHTML = "";
 
-            let cameraId = devices[0].id;
+    cameras.forEach((camera, index) => {
 
-            // use back camera if available
-            devices.forEach(device => {
-                if(device.label.toLowerCase().includes("back")){
-                    cameraId = device.id;
-                }
-            });
+        const option = document.createElement("option");
 
-            html5QrCode.start(
-                cameraId,
-                {
-                    fps: 10,
-                    qrbox: {
-                        width: 250,
-                        height: 250
-                    }
-                },
-                onScanSuccess
-            );
-        }
+        option.value = camera.id;
+        option.text =
+            camera.label || ("Camera " + (index + 1));
 
-    }).catch(err => {
-        alert("Camera Error: " + err);
+        select.appendChild(option);
     });
-}
 
-function stopScanner(){
+    // auto select back camera
+    let backCamera = cameras.find(c =>
+        c.label.toLowerCase().includes("back")
+    );
 
-    if(html5QrCode){
-        html5QrCode.stop().then(() => {
-            document.getElementById("result").innerHTML =
-                "Scanner stopped";
-        });
+    if(backCamera){
+        select.value = backCamera.id;
     }
 }
+
+async function startScanner(){
+
+    try{
+
+        if(html5QrCode){
+            try{
+                await html5QrCode.stop();
+            }catch(e){}
+        }
+
+        currentCameraId =
+            document.getElementById("cameraSelect").value;
+
+        html5QrCode = new Html5Qrcode("reader");
+
+        await html5QrCode.start(
+            currentCameraId,
+            {
+                fps:10,
+                qrbox:{
+                    width:250,
+                    height:250
+                }
+            },
+            onScanSuccess
+        );
+
+        document.getElementById("result").innerHTML =
+            "Scanner started";
+
+    }catch(err){
+
+        alert("Start Error: " + err);
+    }
+}
+
+async function stopScanner(){
+
+    if(html5QrCode){
+
+        await html5QrCode.stop();
+
+        document.getElementById("result").innerHTML =
+            "Scanner stopped";
+    }
+}
+
+async function toggleTorch(){
+
+    try{
+
+        const track =
+            html5QrCode.getRunningTrackSettings();
+
+        const capabilities =
+            html5QrCode.getRunningTrackCapabilities();
+
+        if(capabilities.torch){
+
+            torchOn = !torchOn;
+
+            await html5QrCode.applyVideoConstraints({
+                advanced: [{ torch: torchOn }]
+            });
+
+            document.getElementById("result").innerHTML =
+                torchOn ? "Torch ON" : "Torch OFF";
+
+        }else{
+
+            alert("Torch not supported on this device");
+        }
+
+    }catch(err){
+
+        alert("Torch Error: " + err);
+    }
+}
+
+function toggleMirror(){
+
+    mirrorOn = !mirrorOn;
+
+    if(mirrorOn){
+        reader.classList.add("mirror");
+    }else{
+        reader.classList.remove("mirror");
+    }
+}
+
+loadCameras();
 
 </script>
 
