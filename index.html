@@ -30,44 +30,38 @@ header{
     color:#22d3ee;
 }
 
+/* ---------- CAMERA CONTAINER ---------- */
+
+#cameraContainer{
+    position:relative;
+    width:100%;
+    height:50vh;
+    overflow:hidden;
+    background:black;
+}
+
 /* ---------- READER ---------- */
 
 #reader{
     width:100%;
-    height:50vh;
-    overflow:hidden;
-    position:relative;
-    background:black;
+    height:100%;
 }
 
-/* crop center */
+/* ---------- VIDEO ---------- */
 
 #reader video{
-    width:100%;
-    height:100vh;
-    object-fit:cover;
-    position:absolute;
-    top:50%;
-    left:0;
-    transform:translateY(-50%);
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
 }
 
-/* ---------- HIDE DEFAULT HTML5QRCODE OVERLAY ---------- */
-
-#reader__scan_region{
-    position:relative;
-}
+/* ---------- HIDE DEFAULT OVERLAY ---------- */
 
 #reader__scan_region img{
     display:none !important;
 }
 
 #reader__dashboard{
-    display:none !important;
-}
-
-#reader__scan_region::before,
-#reader__scan_region::after{
     display:none !important;
 }
 
@@ -80,7 +74,7 @@ header{
     pointer-events:none;
 }
 
-/* ---------- VIEWFINDER BOX ---------- */
+/* ---------- VIEWFINDER ---------- */
 
 #roi{
     position:absolute;
@@ -267,7 +261,9 @@ button:active{
 QR & Barcode Scanner
 </header>
 
-<div id="reader">
+<div id="cameraContainer">
+
+    <div id="reader"></div>
 
     <div id="customOverlay">
 
@@ -438,8 +434,6 @@ async function startScanner(){
                 const now =
                 Date.now();
 
-                // prevent repeated scans
-
                 if(
                     decodedText === lastText &&
                     (now - lastScanTime)
@@ -554,12 +548,12 @@ function toggleMirror(){
         if(mirror){
 
             video.style.transform=
-            "translateY(-50%) scaleX(-1)";
+            "scaleX(-1)";
 
         }else{
 
             video.style.transform=
-            "translateY(-50%) scaleX(1)";
+            "scaleX(1)";
         }
     }
 
