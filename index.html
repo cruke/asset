@@ -1,3 +1,4 @@
+```html id="tx0q4d"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -179,9 +180,11 @@ let torch=false;
 
 let mirror=false;
 
-let lastText="";
+/* anti spam */
 
-let lastScanTime=0;
+let scanLock=false;
+
+let lastText="";
 
 /* ---------- LOAD CAMERAS ---------- */
 
@@ -272,24 +275,20 @@ async function startScanner(){
 
             async(decodedText)=>{
 
-                const now =
-                Date.now();
-
-                /* prevent repeated scans */
+                /* ---------- PREVENT SPAM ---------- */
 
                 if(
-                    decodedText === lastText &&
-                    (now - lastScanTime)
-                    < 3000
+                    scanLock &&
+                    decodedText === lastText
                 ){
                     return;
                 }
 
-                lastText =
-                decodedText;
+                scanLock = true;
 
-                lastScanTime =
-                now;
+                lastText = decodedText;
+
+                /* ---------- UI ---------- */
 
                 showPopup(
                 decodedText
@@ -309,9 +308,19 @@ async function startScanner(){
                     );
                 }
 
+                /* ---------- SAVE ---------- */
+
                 await sendToSheet(
                 decodedText
                 );
+
+                /* ---------- UNLOCK ---------- */
+
+                setTimeout(()=>{
+
+                    scanLock = false;
+
+                },3000);
             }
         );
 
@@ -553,3 +562,4 @@ loadCameras();
 
 </body>
 </html>
+```
