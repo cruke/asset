@@ -51,10 +51,6 @@ header{
 }
 
 #video{
-    display:none;
-}
-
-#view{
     width:100%;
     height:100%;
     object-fit:cover;
@@ -192,6 +188,10 @@ button:active{
     color:#22c55e;
 }
 
+.mirror{
+    transform:scaleX(-1);
+}
+
 </style>
 
 <script type="module">
@@ -219,8 +219,6 @@ QR & Barcode Scanner
 
     <video id="video"
     playsinline></video>
-
-    <canvas id="view"></canvas>
 
     <canvas id="overlay"></canvas>
 
@@ -285,14 +283,8 @@ const GAS_URL =
 const video=
 document.getElementById("video");
 
-const view=
-document.getElementById("view");
-
 const overlay=
 document.getElementById("overlay");
-
-const vctx=
-view.getContext("2d");
 
 const ctx=
 overlay.getContext("2d");
@@ -318,8 +310,6 @@ let track=null;
 let mirror=false;
 
 let torch=false;
-
-let renderRun=false;
 
 let lastText="";
 
@@ -450,8 +440,6 @@ async function loadCameras(){
             );
         });
 
-        // auto choose back camera
-
         const backCam=
         cams.find(c=>
         c.label
@@ -489,16 +477,16 @@ async function startScanner(){
         .mediaDevices
         .getUserMedia({
 
-            video:{
-
-                deviceId:
-                selectedCamera
-                ? {
-                    exact:
-                    selectedCamera
-                  }
-                : undefined
-            }
+            video:
+            selectedCamera
+            ? {
+                deviceId:{
+                    exact:selectedCamera
+                }
+              }
+            : {
+                facingMode:"environment"
+              }
         });
 
         video.srcObject=stream;
@@ -508,27 +496,24 @@ async function startScanner(){
         track=
         stream.getVideoTracks()[0];
 
-        view.width=
+        overlay.width=
         video.videoWidth;
 
-        view.height=
-        video.videoHeight;
-
-        overlay.width=
-        view.width;
-
         overlay.height=
-        view.height;
-
-        renderLoop();
+        video.videoHeight;
 
         statusLabel.innerHTML=
         "Scanner Started";
 
+        /* VERY IMPORTANT FIX */
+
         codeReader
         .decodeFromVideoDevice(
-        undefined,
+
+        selectedCamera,
+
         video,
+
         async(result)=>{
 
             if(result){
@@ -566,8 +551,6 @@ async function startScanner(){
                 .clipboard
                 .writeText(text);
 
-                /* SEND TO SHEET */
-
                 await sendToSheet(text);
 
                 setTimeout(()=>{
@@ -601,60 +584,8 @@ function stopScanner(){
         stream=null;
     }
 
-    renderRun=false;
-
     statusLabel.innerHTML=
     "Scanner Stopped";
-}
-
-/* ---------- RENDER ---------- */
-
-function renderLoop(){
-
-    renderRun=true;
-
-    function loop(){
-
-        if(!renderRun){
-            return;
-        }
-
-        requestAnimationFrame(loop);
-
-        if(mirror){
-
-            vctx.save();
-
-            vctx.translate(
-            view.width,
-            0
-            );
-
-            vctx.scale(-1,1);
-
-            vctx.drawImage(
-                video,
-                0,
-                0,
-                view.width,
-                view.height
-            );
-
-            vctx.restore();
-
-        }else{
-
-            vctx.drawImage(
-                video,
-                0,
-                0,
-                view.width,
-                view.height
-            );
-        }
-    }
-
-    loop();
 }
 
 /* ---------- DRAW BOX ---------- */
@@ -752,6 +683,16 @@ function toggleMirror(){
 
     mirror=!mirror;
 
+    if(mirror){
+        video.classList.add(
+        "mirror"
+        );
+    }else{
+        video.classList.remove(
+        "mirror"
+        );
+    }
+
     showPopup(
     mirror
     ? "Mirror ON"
@@ -768,7 +709,6 @@ async function sendToSheet(code){
         statusLabel.innerHTML=
         "Saving to Database...";
 
-        const response=
         await fetch(
         GAS_URL,
         {
@@ -790,17 +730,8 @@ async function sendToSheet(code){
             })
         });
 
-        const text=
-        await response.text();
-
-        console.log(text);
-
         statusLabel.innerHTML=
         "Saved to Database";
-
-        showPopup(
-        "Saved:\n"+code
-        );
 
     }catch(err){
 
