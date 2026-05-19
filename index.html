@@ -9,7 +9,7 @@ initial-scale=1.0,
 maximum-scale=1.0,
 user-scalable=no">
 
-<title>Mobile QR & Barcode Scanner</title>
+<title>QR & Barcode Scanner Database</title>
 
 <style>
 
@@ -35,8 +35,8 @@ body{
 
 header{
     text-align:center;
-    padding:12px;
-    font-size:20px;
+    padding:14px;
+    font-size:22px;
     font-weight:bold;
     color:var(--accent);
 }
@@ -100,12 +100,15 @@ header{
 }
 
 @keyframes scan{
+
     0%{
         top:calc(50% - 120px);
     }
+
     50%{
         top:calc(50% + 120px);
     }
+
     100%{
         top:calc(50% - 120px);
     }
@@ -116,18 +119,18 @@ header{
 #popup{
     position:absolute;
     left:50%;
-    bottom:18px;
+    bottom:20px;
     transform:translateX(-50%);
-    background:rgba(0,0,0,0.85);
-    color:#22c55e;
-    padding:12px 16px;
-    border-radius:12px;
-    border:2px solid #22c55e;
     width:90%;
     max-width:400px;
+    background:rgba(0,0,0,0.88);
+    border:2px solid #22c55e;
+    border-radius:14px;
+    padding:14px;
+    color:#22c55e;
     text-align:center;
     font-size:15px;
-    word-wrap:break-word;
+    word-break:break-word;
     display:none;
 }
 
@@ -140,8 +143,8 @@ header{
 select{
     width:100%;
     padding:14px;
-    border-radius:12px;
     border:none;
+    border-radius:12px;
     background:#111827;
     color:white;
     font-size:16px;
@@ -168,17 +171,25 @@ button:active{
     transform:scale(0.97);
 }
 
+/* history */
+
 #history{
     padding:12px;
 }
 
 .historyItem{
     background:#111827;
-    margin-bottom:8px;
     padding:10px;
+    margin-bottom:8px;
     border-radius:10px;
     font-size:14px;
     word-break:break-word;
+}
+
+.status{
+    text-align:center;
+    padding:10px;
+    color:#22c55e;
 }
 
 </style>
@@ -247,6 +258,13 @@ QR & Barcode Scanner
 
 </div>
 
+<div class="status"
+id="status">
+
+Waiting...
+
+</div>
+
 <div id="history">
 
 <b>Scan History</b>
@@ -256,6 +274,13 @@ QR & Barcode Scanner
 </div>
 
 <script type="module">
+
+/* ---------- GOOGLE SHEETS ---------- */
+
+const GAS_URL =
+"https://script.google.com/macros/s/AKfycbyUEjurhn07mG8zmal7W9HUwiCer_RABw503xgpR3WDSZs8SxxsssLs2roG0x96T-G5fQ/exec";
+
+/* ---------- DOM ---------- */
 
 const video=
 document.getElementById("video");
@@ -278,20 +303,27 @@ document.getElementById("popup");
 const cameraSelect=
 document.getElementById("cameraSelect");
 
+const statusLabel=
+document.getElementById("status");
+
 const codeReader=
 window.reader;
 
+/* ---------- VARIABLES ---------- */
+
 let stream=null;
+
 let track=null;
 
 let mirror=false;
+
 let torch=false;
 
 let renderRun=false;
 
 let lastText="";
 
-/* ---------- SOUND ---------- */
+/* ---------- BEEP ---------- */
 
 function beep(){
 
@@ -375,7 +407,6 @@ async function loadCameras(){
 
     try{
 
-        // ask permission FIRST
         const temp=
         await navigator
         .mediaDevices
@@ -494,11 +525,14 @@ async function startScanner(){
 
         renderLoop();
 
+        statusLabel.innerHTML=
+        "Scanner Started";
+
         codeReader
         .decodeFromVideoDevice(
         undefined,
         video,
-        (result)=>{
+        async(result)=>{
 
             if(result){
 
@@ -535,6 +569,10 @@ async function startScanner(){
                 .clipboard
                 .writeText(text);
 
+                /* SEND TO SHEET */
+
+                sendToSheet(text);
+
                 setTimeout(()=>{
                     lastText="";
                 },2000);
@@ -567,6 +605,9 @@ function stopScanner(){
     }
 
     renderRun=false;
+
+    statusLabel.innerHTML=
+    "Scanner Stopped";
 }
 
 /* ---------- RENDER ---------- */
@@ -700,6 +741,12 @@ async function toggleTorch(){
             torch:torch
         }]
     });
+
+    showPopup(
+    torch
+    ? "Torch ON"
+    : "Torch OFF"
+    );
 }
 
 /* ---------- MIRROR ---------- */
@@ -713,6 +760,74 @@ function toggleMirror(){
     ? "Mirror ON"
     : "Mirror OFF"
     );
+}
+
+/* ---------- SEND TO SHEET ---------- */
+
+async function sendToSheet(code){
+
+    try{
+
+        statusLabel.innerHTML=
+        "Saving to Database...";
+
+        const response=
+        await fetch(
+        GAS_URL,
+        {
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":
+                "application/json"
+            },
+
+            body:JSON.stringify({
+
+                id:code,
+
+                time:new Date()
+                .toLocaleString()
+
+            })
+        });
+
+        const data=
+        await response.json();
+
+        console.log(data);
+
+        if(data.ok){
+
+            statusLabel.innerHTML=
+            "Saved to Database";
+
+            showPopup(
+            "Saved:\n"+code
+            );
+
+        }else{
+
+            statusLabel.innerHTML=
+            "Sheet Error";
+
+            showPopup(
+            "Database Error"
+            );
+        }
+
+    }catch(err){
+
+        console.log(err);
+
+        statusLabel.innerHTML=
+        "Network Error";
+
+        showPopup(
+        "Network Error"
+        );
+    }
 }
 
 /* ---------- EVENTS ---------- */
