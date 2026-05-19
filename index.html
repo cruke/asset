@@ -10,28 +10,15 @@ initial-scale=1.0,
 maximum-scale=1.0,
 user-scalable=no">
 
-<title>QR & Barcode Scanner Database</title>
+<title>QR & Barcode Scanner</title>
 
 <style>
 
-:root{
-    --bg:#0f172a;
-    --fg:#e2e8f0;
-    --accent:#22d3ee;
-    --green:#22c55e;
-}
-
-*{
-    box-sizing:border-box;
-    -webkit-tap-highlight-color:transparent;
-}
-
 body{
     margin:0;
-    background:var(--bg);
-    color:var(--fg);
+    background:#0f172a;
+    color:white;
     font-family:Arial,sans-serif;
-    overflow-x:hidden;
 }
 
 header{
@@ -39,98 +26,12 @@ header{
     padding:14px;
     font-size:22px;
     font-weight:bold;
-    color:var(--accent);
+    color:#22d3ee;
 }
 
-#frameWrap{
-    position:relative;
-    width:100vw;
-    height:58vh;
-    background:black;
-    overflow:hidden;
-}
-
-#video{
+#reader{
     width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
 }
-
-#overlay{
-    position:absolute;
-    left:0;
-    top:0;
-    width:100%;
-    height:100%;
-    pointer-events:none;
-}
-
-/* ROI */
-
-#roi{
-    position:absolute;
-    left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    width:65vw;
-    max-width:280px;
-    aspect-ratio:1;
-    border:3px solid #22c55e;
-    border-radius:20px;
-    box-shadow:0 0 15px #22c55e;
-}
-
-/* scan line */
-
-#scanline{
-    position:absolute;
-    left:50%;
-    transform:translateX(-50%);
-    width:65vw;
-    max-width:280px;
-    height:3px;
-    background:#22c55e;
-    box-shadow:0 0 10px #22c55e;
-    animation:scan 2s linear infinite;
-}
-
-@keyframes scan{
-
-    0%{
-        top:calc(50% - 120px);
-    }
-
-    50%{
-        top:calc(50% + 120px);
-    }
-
-    100%{
-        top:calc(50% - 120px);
-    }
-}
-
-/* popup */
-
-#popup{
-    position:absolute;
-    left:50%;
-    bottom:20px;
-    transform:translateX(-50%);
-    width:90%;
-    max-width:400px;
-    background:rgba(0,0,0,0.88);
-    border:2px solid #22c55e;
-    border-radius:14px;
-    padding:14px;
-    color:#22c55e;
-    text-align:center;
-    font-size:15px;
-    word-break:break-word;
-    display:none;
-}
-
-/* controls */
 
 .controls{
     padding:12px;
@@ -167,7 +68,23 @@ button:active{
     transform:scale(0.97);
 }
 
-/* history */
+#popup{
+    position:fixed;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    width:90%;
+    max-width:400px;
+    background:rgba(0,0,0,0.9);
+    border:2px solid #22c55e;
+    border-radius:14px;
+    padding:14px;
+    color:#22c55e;
+    text-align:center;
+    word-break:break-word;
+    display:none;
+    z-index:9999;
+}
 
 #history{
     padding:12px;
@@ -188,24 +105,9 @@ button:active{
     color:#22c55e;
 }
 
-.mirror{
-    transform:scaleX(-1);
-}
-
 </style>
 
-<script type="module">
-
-import {
-BrowserMultiFormatReader
-}
-from
-"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
-
-window.reader =
-new BrowserMultiFormatReader();
-
-</script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
 </head>
 
@@ -215,20 +117,7 @@ new BrowserMultiFormatReader();
 QR & Barcode Scanner
 </header>
 
-<div id="frameWrap">
-
-    <video id="video"
-    playsinline></video>
-
-    <canvas id="overlay"></canvas>
-
-    <div id="roi"></div>
-
-    <div id="scanline"></div>
-
-    <div id="popup"></div>
-
-</div>
+<div id="reader"></div>
 
 <div class="controls">
 
@@ -236,19 +125,19 @@ QR & Barcode Scanner
 
     <div class="buttons">
 
-        <button id="startBtn">
+        <button onclick="startScanner()">
         Start
         </button>
 
-        <button id="stopBtn">
+        <button onclick="stopScanner()">
         Stop
         </button>
 
-        <button id="torchBtn">
+        <button onclick="toggleTorch()">
         Torch
         </button>
 
-        <button id="mirrorBtn">
+        <button onclick="toggleMirror()">
         Mirror
         </button>
 
@@ -271,47 +160,247 @@ Waiting...
 
 </div>
 
-<script type="module">
+<div id="popup"></div>
+
+<script>
 
 /* ---------- GOOGLE SHEETS ---------- */
 
 const GAS_URL =
 "https://script.google.com/macros/s/AKfycbyUEjurhn07mG8zmal7W9HUwiCer_RABw503xgpR3WDSZs8SxxsssLs2roG0x96T-G5fQ/exec";
 
-/* ---------- DOM ---------- */
-
-const video=
-document.getElementById("video");
-
-const overlay=
-document.getElementById("overlay");
-
-const ctx=
-overlay.getContext("2d");
-
-const popup=
-document.getElementById("popup");
-
-const cameraSelect=
-document.getElementById("cameraSelect");
-
-const statusLabel=
-document.getElementById("status");
-
-const codeReader=
-window.reader;
-
 /* ---------- VARIABLES ---------- */
 
-let stream=null;
+let html5QrCode;
 
-let track=null;
-
-let mirror=false;
+let currentCameraId="";
 
 let torch=false;
 
+let mirror=false;
+
 let lastText="";
+
+/* ---------- LOAD CAMERAS ---------- */
+
+async function loadCameras(){
+
+    const devices =
+    await Html5Qrcode
+    .getCameras();
+
+    const select =
+    document
+    .getElementById(
+    "cameraSelect"
+    );
+
+    select.innerHTML="";
+
+    devices.forEach((device,index)=>{
+
+        const option =
+        document
+        .createElement(
+        "option"
+        );
+
+        option.value =
+        device.id;
+
+        option.text =
+        device.label ||
+        "Camera "+(index+1);
+
+        select.appendChild(
+        option
+        );
+    });
+
+    // auto select back camera
+
+    const backCam =
+    devices.find(d=>
+    d.label
+    .toLowerCase()
+    .includes("back")
+    );
+
+    if(backCam){
+
+        select.value =
+        backCam.id;
+    }
+
+    currentCameraId =
+    select.value;
+}
+
+/* ---------- START ---------- */
+
+async function startScanner(){
+
+    stopScanner();
+
+    currentCameraId =
+    document
+    .getElementById(
+    "cameraSelect"
+    ).value;
+
+    html5QrCode =
+    new Html5Qrcode(
+    "reader"
+    );
+
+    try{
+
+        await html5QrCode.start(
+
+            currentCameraId,
+
+            {
+                fps:10,
+
+                qrbox:{
+                    width:250,
+                    height:250
+                }
+            },
+
+            async(decodedText)=>{
+
+                if(
+                decodedText===
+                lastText
+                ){
+                    return;
+                }
+
+                lastText=
+                decodedText;
+
+                showPopup(
+                decodedText
+                );
+
+                addHistory(
+                decodedText
+                );
+
+                beep();
+
+                if(
+                navigator.vibrate
+                ){
+                    navigator.vibrate(
+                    [120,50,120]
+                    );
+                }
+
+                await sendToSheet(
+                decodedText
+                );
+
+                setTimeout(()=>{
+
+                    lastText="";
+
+                },2000);
+            }
+        );
+
+        document
+        .getElementById(
+        "status"
+        ).innerHTML=
+        "Scanner Started";
+
+    }catch(err){
+
+        alert(err);
+    }
+}
+
+/* ---------- STOP ---------- */
+
+async function stopScanner(){
+
+    try{
+
+        if(html5QrCode){
+
+            await html5QrCode
+            .stop();
+
+            await html5QrCode
+            .clear();
+        }
+
+    }catch(e){}
+}
+
+/* ---------- TORCH ---------- */
+
+async function toggleTorch(){
+
+    try{
+
+        torch=!torch;
+
+        await html5QrCode
+        .applyVideoConstraints({
+
+            advanced:[{
+                torch:torch
+            }]
+        });
+
+        showPopup(
+        torch
+        ? "Torch ON"
+        : "Torch OFF"
+        );
+
+    }catch(err){
+
+        alert(
+        "Torch not supported"
+        );
+    }
+}
+
+/* ---------- MIRROR ---------- */
+
+function toggleMirror(){
+
+    mirror=!mirror;
+
+    const video =
+    document.querySelector(
+    "#reader video"
+    );
+
+    if(video){
+
+        if(mirror){
+
+            video.style.transform=
+            "scaleX(-1)";
+
+        }else{
+
+            video.style.transform=
+            "scaleX(1)";
+        }
+    }
+
+    showPopup(
+    mirror
+    ? "Mirror ON"
+    : "Mirror OFF"
+    );
+}
 
 /* ---------- BEEP ---------- */
 
@@ -352,18 +441,26 @@ function beep(){
 
 function showPopup(text){
 
+    const popup =
+    document
+    .getElementById(
+    "popup"
+    );
+
     popup.innerHTML=text;
 
-    popup.style.display="block";
+    popup.style.display=
+    "block";
 
     clearTimeout(
-        popup.timer
+    popup.timer
     );
 
     popup.timer=
     setTimeout(()=>{
 
-        popup.style.display="none";
+        popup.style.display=
+        "none";
 
     },3000);
 }
@@ -372,8 +469,11 @@ function showPopup(text){
 
 function addHistory(text){
 
-    const div=
-    document.createElement("div");
+    const div =
+    document
+    .createElement(
+    "div"
+    );
 
     div.className=
     "historyItem";
@@ -391,323 +491,17 @@ function addHistory(text){
     .prepend(div);
 }
 
-/* ---------- LOAD CAMERAS ---------- */
-
-async function loadCameras(){
-
-    try{
-
-        const temp=
-        await navigator
-        .mediaDevices
-        .getUserMedia({
-            video:true
-        });
-
-        temp.getTracks()
-        .forEach(t=>t.stop());
-
-        const devices=
-        await navigator
-        .mediaDevices
-        .enumerateDevices();
-
-        const cams=
-        devices.filter(d=>
-        d.kind==="videoinput"
-        );
-
-        cameraSelect.innerHTML="";
-
-        cams.forEach((cam,index)=>{
-
-            const option=
-            document.createElement(
-            "option"
-            );
-
-            option.value=
-            cam.deviceId;
-
-            option.textContent=
-            cam.label ||
-            "Camera "+
-            (index+1);
-
-            cameraSelect
-            .appendChild(
-            option
-            );
-        });
-
-        const backCam=
-        cams.find(c=>
-        c.label
-        .toLowerCase()
-        .includes("back")
-        );
-
-        if(backCam){
-
-            cameraSelect.value=
-            backCam.deviceId;
-        }
-
-    }catch(err){
-
-        alert(
-        "Camera Permission Needed"
-        );
-    }
-}
-
-/* ---------- START ---------- */
-
-async function startScanner(){
-
-    stopScanner();
-
-    try{
-
-        const selectedCamera=
-        cameraSelect.value;
-
-        stream=
-        await navigator
-        .mediaDevices
-        .getUserMedia({
-
-            video:
-            selectedCamera
-            ? {
-                deviceId:{
-                    exact:selectedCamera
-                }
-              }
-            : {
-                facingMode:"environment"
-              }
-        });
-
-        video.srcObject=stream;
-
-        await video.play();
-
-        track=
-        stream.getVideoTracks()[0];
-
-        overlay.width=
-        video.videoWidth;
-
-        overlay.height=
-        video.videoHeight;
-
-        statusLabel.innerHTML=
-        "Scanner Started";
-
-        /* VERY IMPORTANT FIX */
-
-        codeReader
-        .decodeFromVideoDevice(
-
-        selectedCamera,
-
-        video,
-
-        async(result)=>{
-
-            if(result){
-
-                const text=
-                result.text;
-
-                if(
-                text===lastText
-                ){
-                    return;
-                }
-
-                lastText=text;
-
-                drawBox(
-                result.resultPoints
-                );
-
-                showPopup(text);
-
-                addHistory(text);
-
-                beep();
-
-                if(
-                navigator.vibrate
-                ){
-                    navigator.vibrate(
-                    [120,50,120]
-                    );
-                }
-
-                navigator
-                .clipboard
-                .writeText(text);
-
-                await sendToSheet(text);
-
-                setTimeout(()=>{
-                    lastText="";
-                },2000);
-            }
-        });
-
-    }catch(err){
-
-        alert(
-        "Start Error:\n"+err
-        );
-    }
-}
-
-/* ---------- STOP ---------- */
-
-function stopScanner(){
-
-    try{
-        codeReader.reset();
-    }catch(e){}
-
-    if(stream){
-
-        stream
-        .getTracks()
-        .forEach(t=>t.stop());
-
-        stream=null;
-    }
-
-    statusLabel.innerHTML=
-    "Scanner Stopped";
-}
-
-/* ---------- DRAW BOX ---------- */
-
-function drawBox(points){
-
-    ctx.clearRect(
-        0,
-        0,
-        overlay.width,
-        overlay.height
-    );
-
-    if(!points){
-        return;
-    }
-
-    ctx.strokeStyle=
-    "#22c55e";
-
-    ctx.lineWidth=5;
-
-    ctx.beginPath();
-
-    points.forEach((p,i)=>{
-
-        let x=p.x;
-        let y=p.y;
-
-        if(mirror){
-            x=overlay.width-x;
-        }
-
-        if(i===0){
-            ctx.moveTo(x,y);
-        }else{
-            ctx.lineTo(x,y);
-        }
-    });
-
-    ctx.closePath();
-
-    ctx.stroke();
-
-    setTimeout(()=>{
-
-        ctx.clearRect(
-            0,
-            0,
-            overlay.width,
-            overlay.height
-        );
-
-    },500);
-}
-
-/* ---------- TORCH ---------- */
-
-async function toggleTorch(){
-
-    if(!track){
-        return;
-    }
-
-    const caps=
-    track.getCapabilities();
-
-    if(!caps.torch){
-
-        alert(
-        "Torch not supported"
-        );
-
-        return;
-    }
-
-    torch=!torch;
-
-    await track.applyConstraints({
-        advanced:[{
-            torch:torch
-        }]
-    });
-
-    showPopup(
-    torch
-    ? "Torch ON"
-    : "Torch OFF"
-    );
-}
-
-/* ---------- MIRROR ---------- */
-
-function toggleMirror(){
-
-    mirror=!mirror;
-
-    if(mirror){
-        video.classList.add(
-        "mirror"
-        );
-    }else{
-        video.classList.remove(
-        "mirror"
-        );
-    }
-
-    showPopup(
-    mirror
-    ? "Mirror ON"
-    : "Mirror OFF"
-    );
-}
-
-/* ---------- SEND TO SHEET ---------- */
+/* ---------- GOOGLE SHEETS ---------- */
 
 async function sendToSheet(code){
 
     try{
 
-        statusLabel.innerHTML=
-        "Saving to Database...";
+        document
+        .getElementById(
+        "status"
+        ).innerHTML=
+        "Saving...";
 
         await fetch(
         GAS_URL,
@@ -730,47 +524,21 @@ async function sendToSheet(code){
             })
         });
 
-        statusLabel.innerHTML=
-        "Saved to Database";
+        document
+        .getElementById(
+        "status"
+        ).innerHTML=
+        "Saved";
 
     }catch(err){
 
-        console.log(err);
-
-        statusLabel.innerHTML=
+        document
+        .getElementById(
+        "status"
+        ).innerHTML=
         "Network Error";
-
-        showPopup(
-        "Network Error"
-        );
     }
 }
-
-/* ---------- EVENTS ---------- */
-
-document
-.getElementById(
-"startBtn"
-)
-.onclick=startScanner;
-
-document
-.getElementById(
-"stopBtn"
-)
-.onclick=stopScanner;
-
-document
-.getElementById(
-"torchBtn"
-)
-.onclick=toggleTorch;
-
-document
-.getElementById(
-"mirrorBtn"
-)
-.onclick=toggleMirror;
 
 /* ---------- INIT ---------- */
 
