@@ -483,13 +483,48 @@ let mirror=false;
 let lastText="";
 let lastScanTime=0;
 
+let voicesLoaded=false;
+
+/* ---------- LOAD VOICES ---------- */
+
+function initVoices(){
+
+    return new Promise((resolve)=>{
+
+        let voices =
+        speechSynthesis.getVoices();
+
+        if(voices.length){
+
+            voicesLoaded=true;
+
+            resolve();
+
+            return;
+        }
+
+        speechSynthesis.onvoiceschanged=
+        ()=>{
+
+            voicesLoaded=true;
+
+            resolve();
+        };
+    });
+}
+
 /* ---------- TTS ---------- */
 
-function speak(text){
+async function speak(text){
 
     try{
 
-        window.speechSynthesis.cancel();
+        if(!voicesLoaded){
+
+            await initVoices();
+        }
+
+        speechSynthesis.cancel();
 
         const utter =
         new SpeechSynthesisUtterance(
@@ -503,6 +538,21 @@ function speak(text){
         utter.pitch=1;
 
         utter.volume=1;
+
+        const voices =
+        speechSynthesis.getVoices();
+
+        const voice =
+        voices.find(v=>
+
+            v.lang.includes("en")
+
+        );
+
+        if(voice){
+
+            utter.voice=voice;
+        }
 
         speechSynthesis.speak(
         utter
@@ -594,6 +644,23 @@ async function startScanner(){
 
     stopScanner();
 
+    /* ---------- UNLOCK TTS ---------- */
+
+    try{
+
+        const unlock =
+        new SpeechSynthesisUtterance(
+        " "
+        );
+
+        unlock.volume = 0;
+
+        speechSynthesis.speak(
+        unlock
+        );
+
+    }catch(e){}
+
     try{
 
         const deviceId =
@@ -622,7 +689,9 @@ async function startScanner(){
 
                 focusMode:"continuous"
 
-            }
+            },
+
+            audio:false
 
         });
 
@@ -653,9 +722,13 @@ async function startScanner(){
         statusLabel.innerHTML=
         "Scanner Started";
 
-        speak(
-        "Scanner started"
-        );
+        setTimeout(()=>{
+
+            speak(
+            "Scanner started"
+            );
+
+        },500);
 
         reader.decodeFromVideoDevice(
 
