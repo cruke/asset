@@ -3,6 +3,7 @@
 <head>
 
 <meta charset="UTF-8">
+
 <meta name="viewport"
 content="width=device-width,
 initial-scale=1.0,
@@ -81,8 +82,7 @@ header{
     aspect-ratio:1;
     border:3px solid #22c55e;
     border-radius:20px;
-    box-shadow:
-    0 0 15px #22c55e;
+    box-shadow:0 0 15px #22c55e;
 }
 
 /* scan line */
@@ -497,10 +497,7 @@ async function startScanner(){
                     exact:
                     selectedCamera
                   }
-                : undefined,
-
-                facingMode:
-                "environment"
+                : undefined
             }
         });
 
@@ -571,7 +568,7 @@ async function startScanner(){
 
                 /* SEND TO SHEET */
 
-                sendToSheet(text);
+                await sendToSheet(text);
 
                 setTimeout(()=>{
                     lastText="";
@@ -780,7 +777,7 @@ async function sendToSheet(code){
 
             headers:{
                 "Content-Type":
-                "application/json"
+                "text/plain"
             },
 
             body:JSON.stringify({
@@ -793,29 +790,17 @@ async function sendToSheet(code){
             })
         });
 
-        const data=
-        await response.json();
+        const text=
+        await response.text();
 
-        console.log(data);
+        console.log(text);
 
-        if(data.ok){
+        statusLabel.innerHTML=
+        "Saved to Database";
 
-            statusLabel.innerHTML=
-            "Saved to Database";
-
-            showPopup(
-            "Saved:\n"+code
-            );
-
-        }else{
-
-            statusLabel.innerHTML=
-            "Sheet Error";
-
-            showPopup(
-            "Database Error"
-            );
-        }
+        showPopup(
+        "Saved:\n"+code
+        );
 
     }catch(err){
 
