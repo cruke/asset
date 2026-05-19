@@ -181,6 +181,8 @@ let mirror=false;
 
 let lastText="";
 
+let lastScanTime=0;
+
 /* ---------- LOAD CAMERAS ---------- */
 
 async function loadCameras(){
@@ -240,7 +242,7 @@ async function loadCameras(){
 
 async function startScanner(){
 
-    stopScanner();
+    await stopScanner();
 
     currentCameraId =
     document
@@ -270,15 +272,24 @@ async function startScanner(){
 
             async(decodedText)=>{
 
+                const now =
+                Date.now();
+
+                /* prevent repeated scans */
+
                 if(
-                decodedText===
-                lastText
+                    decodedText === lastText &&
+                    (now - lastScanTime)
+                    < 3000
                 ){
                     return;
                 }
 
-                lastText=
+                lastText =
                 decodedText;
+
+                lastScanTime =
+                now;
 
                 showPopup(
                 decodedText
@@ -301,12 +312,6 @@ async function startScanner(){
                 await sendToSheet(
                 decodedText
                 );
-
-                setTimeout(()=>{
-
-                    lastText="";
-
-                },2000);
             }
         );
 
