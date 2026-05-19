@@ -10,12 +10,13 @@ initial-scale=1.0,
 maximum-scale=1.0,
 user-scalable=no">
 
-<title>Asset QR & Barcode Scanner</title>
+<title>Professional Asset Barcode Scanner</title>
 
 <style>
 
 :root{
     --bg:#0f172a;
+    --card:#111827;
     --fg:#e2e8f0;
     --accent:#22d3ee;
     --green:#22c55e;
@@ -31,12 +32,11 @@ body{
     background:var(--bg);
     color:var(--fg);
     font-family:Arial,sans-serif;
-    overflow-x:hidden;
 }
 
 header{
-    padding:14px;
     text-align:center;
+    padding:14px;
     font-size:22px;
     font-weight:bold;
     color:var(--accent);
@@ -55,7 +55,7 @@ select{
     padding:14px;
     border:none;
     border-radius:12px;
-    background:#111827;
+    background:var(--card);
     color:white;
     font-size:16px;
     margin-bottom:10px;
@@ -72,7 +72,7 @@ button{
     padding:14px;
     border:none;
     border-radius:12px;
-    background:#111827;
+    background:var(--card);
     color:white;
     font-size:16px;
 }
@@ -83,7 +83,7 @@ button:active{
 
 /* ---------- CAMERA ---------- */
 
-#frameWrap{
+#cameraWrap{
     position:relative;
     width:100%;
     height:50vh;
@@ -95,88 +95,80 @@ button:active{
     display:none;
 }
 
-#view{
+#display{
     width:100%;
     height:100%;
     object-fit:cover;
     display:block;
+    background:black;
 }
 
 #overlay{
     position:absolute;
-    left:0;
-    top:0;
-    width:100%;
-    height:100%;
+    inset:0;
     pointer-events:none;
 }
 
-/* ---------- VIEWFINDER ---------- */
+/* ---------- BARCODE ROI ---------- */
 
 #roi{
     position:absolute;
     left:50%;
     top:50%;
     transform:translate(-50%,-50%);
-    width:260px;
-    height:260px;
+    width:320px;
+    height:140px;
     border:2px solid rgba(255,255,255,0.15);
-    border-radius:20px;
-    z-index:10;
+    border-radius:18px;
+    pointer-events:none;
 }
 
-/* top left */
+/* corners */
 
 #roi::before{
     content:"";
     position:absolute;
     top:-3px;
     left:-3px;
-    width:60px;
-    height:60px;
-    border-top:5px solid #22c55e;
-    border-left:5px solid #22c55e;
-    border-top-left-radius:20px;
+    width:50px;
+    height:50px;
+    border-top:5px solid var(--green);
+    border-left:5px solid var(--green);
+    border-top-left-radius:18px;
 }
-
-/* bottom right */
 
 #roi::after{
     content:"";
     position:absolute;
     right:-3px;
     bottom:-3px;
-    width:60px;
-    height:60px;
-    border-right:5px solid #22c55e;
-    border-bottom:5px solid #22c55e;
-    border-bottom-right-radius:20px;
+    width:50px;
+    height:50px;
+    border-right:5px solid var(--green);
+    border-bottom:5px solid var(--green);
+    border-bottom-right-radius:18px;
 }
-
-/* top right */
 
 .corner1{
     position:absolute;
     top:-3px;
     right:-3px;
-    width:60px;
-    height:60px;
-    border-top:5px solid #22c55e;
-    border-right:5px solid #22c55e;
-    border-top-right-radius:20px;
+    width:50px;
+    height:50px;
+    border-top:5px solid var(--green);
+    border-right:5px solid var(--green);
+    border-top-right-radius:18px;
 }
-
-/* bottom left */
 
 .corner2{
     position:absolute;
     left:-3px;
     bottom:-3px;
-    width:60px;
-    height:60px;
-    border-left:5px solid #22c55e;
-    border-bottom:5px solid #22c55e;
-    border-bottom-left-radius:20px;
+    width:50px;
+    height:50px;
+    border-left:5px solid var(--green);
+    border-bottom:5px solid var(--green);
+    border-bottom-left-radius:18px;
 }
 
 /* ---------- SCAN LINE ---------- */
@@ -184,26 +176,27 @@ button:active{
 #scanline{
     position:absolute;
     left:50%;
+    top:50%;
     transform:translateX(-50%);
-    width:240px;
+    width:300px;
     height:3px;
-    background:#22c55e;
-    box-shadow:0 0 10px #22c55e;
-    animation:scan 2s linear infinite;
+    background:var(--green);
+    box-shadow:0 0 12px var(--green);
+    animation:scan 1.5s linear infinite;
 }
 
 @keyframes scan{
 
     0%{
-        top:calc(50% - 120px);
+        margin-top:-60px;
     }
 
     50%{
-        top:calc(50% + 120px);
+        margin-top:60px;
     }
 
     100%{
-        top:calc(50% - 120px);
+        margin-top:-60px;
     }
 }
 
@@ -212,7 +205,7 @@ button:active{
 .status{
     text-align:center;
     padding:10px;
-    color:#22c55e;
+    color:var(--green);
     font-size:16px;
 }
 
@@ -220,17 +213,17 @@ button:active{
 
 #resultBox{
     margin:12px;
-    background:#111827;
+    background:var(--card);
     border-radius:14px;
     padding:14px;
     display:none;
 }
 
 .resultTitle{
-    color:#22d3ee;
-    margin-bottom:10px;
+    color:var(--accent);
     font-size:18px;
     font-weight:bold;
+    margin-bottom:10px;
 }
 
 .resultItem{
@@ -243,9 +236,35 @@ button:active{
 }
 
 .resultValue{
+    margin-top:4px;
     font-size:17px;
-    margin-top:3px;
     word-break:break-word;
+}
+
+/* ---------- HISTORY ---------- */
+
+#history{
+    padding:12px;
+}
+
+.historyTitle{
+    color:var(--accent);
+    font-size:18px;
+    margin-bottom:10px;
+    font-weight:bold;
+}
+
+.historyItem{
+    background:var(--card);
+    border-left:4px solid var(--green);
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:10px;
+    word-break:break-word;
+}
+
+.notFound{
+    color:var(--red);
 }
 
 /* ---------- POPUP ---------- */
@@ -258,63 +277,23 @@ button:active{
     width:90%;
     max-width:400px;
     background:rgba(0,0,0,0.9);
-    border:2px solid #22c55e;
+    border:2px solid var(--green);
     border-radius:14px;
     padding:14px;
-    color:#22c55e;
+    color:var(--green);
     text-align:center;
-    word-break:break-word;
     display:none;
     z-index:9999;
 }
 
-/* ---------- HISTORY ---------- */
-
-#history{
-    padding:12px;
-}
-
-.historyTitle{
-    color:#22d3ee;
-    margin-bottom:10px;
-    font-size:18px;
-    font-weight:bold;
-}
-
-.historyItem{
-    background:#111827;
-    border-left:4px solid #22c55e;
-    padding:12px;
-    border-radius:12px;
-    margin-bottom:10px;
-    word-break:break-word;
-}
-
-.notFound{
-    color:#ef4444;
-}
-
 </style>
-
-<script type="module">
-
-import {
-BrowserMultiFormatReader
-}
-from
-"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
-
-window.ZXING_Reader =
-new BrowserMultiFormatReader();
-
-</script>
 
 </head>
 
 <body>
 
 <header>
-Asset QR & Barcode Scanner
+Professional Asset Barcode Scanner
 </header>
 
 <!-- CONTROLS -->
@@ -347,12 +326,12 @@ Asset QR & Barcode Scanner
 
 <!-- CAMERA -->
 
-<div id="frameWrap">
+<div id="cameraWrap">
 
     <video id="video"
     playsinline></video>
 
-    <canvas id="view"></canvas>
+    <canvas id="display"></canvas>
 
     <canvas id="overlay"></canvas>
 
@@ -444,6 +423,12 @@ Waiting...
 
 <script type="module">
 
+import {
+BrowserMultiFormatReader
+}
+from
+"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
+
 /* ---------- CONFIG ---------- */
 
 const GAS_URL =
@@ -451,26 +436,40 @@ const GAS_URL =
 
 /* ---------- DOM ---------- */
 
-const video=
-document.getElementById("video");
+const video =
+document.getElementById(
+"video"
+);
 
-const view=
-document.getElementById("view");
+const display =
+document.getElementById(
+"display"
+);
 
-const overlay=
-document.getElementById("overlay");
+const overlay =
+document.getElementById(
+"overlay"
+);
 
-const vctx=
-view.getContext("2d");
+const dctx =
+display.getContext(
+"2d"
+);
 
-const ctx=
-overlay.getContext("2d");
+const octx =
+overlay.getContext(
+"2d"
+);
 
-const cameraSelect=
-document.getElementById("cameraSelect");
+const cameraSelect =
+document.getElementById(
+"cameraSelect"
+);
 
-const codeReader=
-window.ZXING_Reader;
+/* ---------- ZXING ---------- */
+
+const codeReader =
+new BrowserMultiFormatReader();
 
 /* ---------- STATE ---------- */
 
@@ -478,25 +477,29 @@ let stream=null;
 
 let track=null;
 
-let vw=0;
-
-let vh=0;
-
-let cropY=0;
-
-let cropH=0;
-
-let renderRunning=false;
-
-let decoderRunning=false;
+let running=false;
 
 let mirror=false;
 
 let torch=false;
 
 let lastText="";
-
 let lastScanTime=0;
+
+/* ---------- DECODE CANVAS ---------- */
+
+const decodeCanvas =
+document.createElement(
+"canvas"
+);
+
+const decodeCtx =
+decodeCanvas.getContext(
+"2d",
+{
+willReadFrequently:true
+}
+);
 
 /* ---------- LOAD CAMERAS ---------- */
 
@@ -544,6 +547,19 @@ async function loadCameras(){
         option
         );
     });
+
+    const backCam =
+    cams.find(c=>
+    c.label
+    .toLowerCase()
+    .includes("back")
+    );
+
+    if(backCam){
+
+        cameraSelect.value =
+        backCam.deviceId;
+    }
 }
 
 /* ---------- START ---------- */
@@ -554,9 +570,6 @@ async function startScanner(){
 
     try{
 
-        const selectedDeviceId =
-        cameraSelect.value;
-
         stream =
         await navigator
         .mediaDevices
@@ -565,8 +578,9 @@ async function startScanner(){
             video:{
                 deviceId:{
                     exact:
-                    selectedDeviceId
-                }
+                    cameraSelect.value
+                },
+                focusMode:"continuous"
             }
         });
 
@@ -576,37 +590,30 @@ async function startScanner(){
         await video.play();
 
         track =
-        stream.getVideoTracks()[0];
+        stream
+        .getVideoTracks()[0];
 
-        vw=
-        video.videoWidth;
+        display.width =
+        cameraWrap.clientWidth;
 
-        vh=
-        video.videoHeight;
+        display.height =
+        cameraWrap.clientHeight;
 
-        cropY=
-        Math.floor(vh/3);
+        overlay.width =
+        cameraWrap.clientWidth;
 
-        cropH=
-        Math.floor(vh/3);
+        overlay.height =
+        cameraWrap.clientHeight;
 
-        view.width=vw;
-        view.height=cropH;
+        running=true;
 
-        overlay.width=vw;
-        overlay.height=cropH;
+        renderLoop();
 
-        startRender();
+        decodeLoop();
 
-        startDecode(
-        selectedDeviceId
+        status(
+        "Scanner Started"
         );
-
-        document
-        .getElementById(
-        "status"
-        ).innerHTML=
-        "Scanner Started";
 
     }catch(err){
 
@@ -618,9 +625,7 @@ async function startScanner(){
 
 function stopScanner(){
 
-    decoderRunning=false;
-
-    renderRunning=false;
+    running=false;
 
     try{
         codeReader.reset();
@@ -638,204 +643,185 @@ function stopScanner(){
 
 /* ---------- RENDER ---------- */
 
-function startRender(){
+function renderLoop(){
 
-    renderRunning=true;
-
-    (function loop(){
-
-        if(!renderRunning){
-            return;
-        }
-
-        requestAnimationFrame(loop);
-
-        vctx.save();
-
-        if(mirror){
-
-            vctx.translate(
-            view.width,
-            0
-            );
-
-            vctx.scale(-1,1);
-        }
-
-        vctx.drawImage(
-            video,
-            0,
-            cropY,
-            vw,
-            cropH,
-            0,
-            0,
-            view.width,
-            view.height
-        );
-
-        vctx.restore();
-
-    })();
-}
-
-/* ---------- MAP POINT ---------- */
-
-function mapPoint(p){
-
-    let x=
-    p.getX
-    ? p.getX()
-    : p.x;
-
-    let y=
-    p.getY
-    ? p.getY()
-    : p.y;
-
-    if(mirror){
-        x=vw-x;
-    }
-
-    y-=cropY;
-
-    return {x,y};
-}
-
-/* ---------- DRAW BOX ---------- */
-
-function drawBox(points){
-
-    ctx.clearRect(
-        0,
-        0,
-        overlay.width,
-        overlay.height
-    );
-
-    if(!points.length){
+    if(!running){
         return;
     }
 
-    const mapped =
-    points.map(mapPoint);
-
-    let minX=999999;
-    let minY=999999;
-    let maxX=0;
-    let maxY=0;
-
-    mapped.forEach(p=>{
-
-        minX=Math.min(minX,p.x);
-        minY=Math.min(minY,p.y);
-        maxX=Math.max(maxX,p.x);
-        maxY=Math.max(maxY,p.y);
-    });
-
-    ctx.strokeStyle=
-    "#22d3ee";
-
-    ctx.lineWidth=4;
-
-    ctx.strokeRect(
-        minX-10,
-        minY-10,
-        (maxX-minX)+20,
-        (maxY-minY)+20
+    requestAnimationFrame(
+    renderLoop
     );
 
-    setTimeout(()=>{
+    const cw =
+    display.width;
 
-        ctx.clearRect(
-            0,
-            0,
-            overlay.width,
-            overlay.height
-        );
+    const ch =
+    display.height;
 
-    },200);
-}
+    const vw =
+    video.videoWidth;
 
-/* ---------- DECODE ---------- */
+    const vh =
+    video.videoHeight;
 
-function startDecode(
-selectedDeviceId
-){
+    if(!vw || !vh){
+        return;
+    }
 
-    decoderRunning=true;
+    const scale =
+    Math.max(
+        cw/vw,
+        ch/vh
+    );
 
-    codeReader
-    .decodeFromVideoDevice(
+    const sw =
+    cw/scale;
 
-        selectedDeviceId,
+    const sh =
+    ch/scale;
+
+    const sx =
+    (vw-sw)/2;
+
+    const sy =
+    (vh-sh)/2;
+
+    dctx.save();
+
+    if(mirror){
+
+        dctx.translate(cw,0);
+
+        dctx.scale(-1,1);
+    }
+
+    dctx.drawImage(
 
         video,
 
-        async(res)=>{
+        sx,
+        sy,
+        sw,
+        sh,
 
-            if(
-            !decoderRunning
-            ){
-                return;
-            }
+        0,
+        0,
+        cw,
+        ch
+    );
 
-            if(res){
+    dctx.restore();
+}
 
-                const text =
-                String(
-                res.text || ""
-                ).trim();
+/* ---------- DECODE LOOP ---------- */
 
-                const now =
-                Date.now();
+async function decodeLoop(){
 
-                if(
-                    text===lastText &&
-                    (now-lastScanTime)
-                    < 3000
-                ){
-                    return;
-                }
+    if(!running){
+        return;
+    }
 
-                lastText=text;
+    requestAnimationFrame(
+    decodeLoop
+    );
 
-                lastScanTime=now;
+    const cw =
+    display.width;
 
-                drawBox(
-                res.resultPoints
-                || []
-                );
+    const ch =
+    display.height;
 
-                beep();
+    // barcode optimized ROI
 
-                if(
-                navigator.vibrate
-                ){
-                    navigator.vibrate(
-                    [120,50,120]
-                    );
-                }
+    const rw = 320;
+    const rh = 140;
 
-                await searchAsset(
-                text
-                );
-            }
+    const rx =
+    (cw-rw)/2;
+
+    const ry =
+    (ch-rh)/2;
+
+    decodeCanvas.width=rw;
+    decodeCanvas.height=rh;
+
+    decodeCtx.drawImage(
+
+        display,
+
+        rx,
+        ry,
+        rw,
+        rh,
+
+        0,
+        0,
+        rw,
+        rh
+    );
+
+    try{
+
+        const result =
+        await codeReader
+        .decodeFromCanvas(
+        decodeCanvas
+        );
+
+        if(result){
+
+            handleResult(
+            result.text
+            );
         }
+
+    }catch(e){}
+}
+
+/* ---------- HANDLE RESULT ---------- */
+
+async function handleResult(text){
+
+    const now =
+    Date.now();
+
+    if(
+        text===lastText &&
+        (now-lastScanTime)
+        < 3000
+    ){
+        return;
+    }
+
+    lastText=text;
+
+    lastScanTime=now;
+
+    beep();
+
+    if(
+    navigator.vibrate
+    ){
+        navigator.vibrate(
+        [120,50,120]
+        );
+    }
+
+    await searchAsset(
+    text
     );
 }
 
-/* ---------- SEARCH DATABASE ---------- */
+/* ---------- DATABASE ---------- */
 
 async function searchAsset(code){
 
     try{
 
-        document
-        .getElementById(
-        "status"
-        ).innerHTML=
-        "Searching Database...";
+        status(
+        "Searching Database..."
+        );
 
         const response =
         await fetch(
@@ -859,11 +845,9 @@ async function searchAsset(code){
 
         if(data.found){
 
-            document
-            .getElementById(
-            "status"
-            ).innerHTML=
-            "Asset Found";
+            status(
+            "Asset Found"
+            );
 
             document
             .getElementById(
@@ -871,22 +855,13 @@ async function searchAsset(code){
             ).style.display=
             "block";
 
-            document
-            .getElementById(
-            "resultSiri"
-            ).innerHTML=
+            resultSiri.innerHTML =
             data.no_siri;
 
-            document
-            .getElementById(
-            "resultAset"
-            ).innerHTML=
+            resultAset.innerHTML =
             data.keterangan;
 
-            document
-            .getElementById(
-            "resultLokasi"
-            ).innerHTML=
+            resultLokasi.innerHTML =
             data.lokasi;
 
             addHistory(
@@ -903,11 +878,9 @@ async function searchAsset(code){
 
         }else{
 
-            document
-            .getElementById(
-            "status"
-            ).innerHTML=
-            "Asset Not Found";
+            status(
+            "Asset Not Found"
+            );
 
             document
             .getElementById(
@@ -932,11 +905,9 @@ async function searchAsset(code){
 
         console.log(err);
 
-        document
-        .getElementById(
-        "status"
-        ).innerHTML=
-        "Network Error";
+        status(
+        "Network Error"
+        );
 
         showPopup(
         "Network Error"
@@ -998,11 +969,9 @@ found
 
     div.innerHTML=html;
 
-    document
-    .getElementById(
-    "historyList"
-    )
-    .prepend(div);
+    historyList.prepend(
+    div
+    );
 }
 
 /* ---------- TORCH ---------- */
@@ -1053,6 +1022,16 @@ function toggleMirror(){
     ? "Mirror ON"
     : "Mirror OFF"
     );
+}
+
+/* ---------- STATUS ---------- */
+
+function status(t){
+
+    document
+    .getElementById(
+    "status"
+    ).innerHTML=t;
 }
 
 /* ---------- BEEP ---------- */
@@ -1120,29 +1099,17 @@ function showPopup(text){
 
 /* ---------- EVENTS ---------- */
 
-document
-.getElementById(
-"startBtn"
-)
-.onclick=startScanner;
+startBtn.onclick =
+startScanner;
 
-document
-.getElementById(
-"stopBtn"
-)
-.onclick=stopScanner;
+stopBtn.onclick =
+stopScanner;
 
-document
-.getElementById(
-"torchBtn"
-)
-.onclick=toggleTorch;
+torchBtn.onclick =
+toggleTorch;
 
-document
-.getElementById(
-"mirrorBtn"
-)
-.onclick=toggleMirror;
+mirrorBtn.onclick =
+toggleMirror;
 
 /* ---------- INIT ---------- */
 
