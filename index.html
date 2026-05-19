@@ -480,10 +480,11 @@ let torch=false;
 
 let mirror=false;
 
-let lastText="";
-let lastScanTime=0;
-
 let voicesLoaded=false;
+
+/* ---------- DUPLICATE BLOCK ---------- */
+
+let recentScans = {};
 
 /* ---------- LOAD VOICES ---------- */
 
@@ -644,8 +645,6 @@ async function startScanner(){
 
     stopScanner();
 
-    /* ---------- UNLOCK TTS ---------- */
-
     try{
 
         const unlock =
@@ -780,19 +779,45 @@ function stopScanner(){
 
 async function handleScan(text){
 
-    const now=
+    const now =
     Date.now();
 
-    if(
-        text===lastText &&
-        (now-lastScanTime)
-        <3000
-    ){
-        return;
+    /* ---------- BLOCK REPEATED QR ---------- */
+
+    if(recentScans[text]){
+
+        const diff =
+        now - recentScans[text];
+
+        /* ignore same QR for 10 seconds */
+
+        if(diff < 10000){
+
+            console.log(
+            "Duplicate blocked:",
+            text
+            );
+
+            return;
+        }
     }
 
-    lastText=text;
-    lastScanTime=now;
+    /* save latest scan time */
+
+    recentScans[text] = now;
+
+    /* cleanup old memory */
+
+    Object.keys(recentScans)
+    .forEach(key=>{
+
+        if(
+            now - recentScans[key]
+            > 30000
+        ){
+            delete recentScans[key];
+        }
+    });
 
     beep();
 
