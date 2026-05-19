@@ -90,18 +90,13 @@ button:active{
     background:black;
 }
 
-/* REAL CAMERA */
-
 #video{
     width:100%;
     height:100%;
     object-fit:cover;
     display:block;
 
-    /* CENTER ZOOM */
-
     transform:scale(1.25);
-
     transform-origin:center center;
 }
 
@@ -491,9 +486,7 @@ async function loadCameras(){
 
     try{
 
-        // restore previous selected camera
-
-        const previousCamera =
+        const savedCamera =
         localStorage.getItem(
         "selectedCamera"
         ) || "";
@@ -541,13 +534,13 @@ async function loadCameras(){
 
         // restore selected camera
 
-        if(previousCamera){
+        if(savedCamera){
 
             cameraSelect.value =
-            previousCamera;
+            savedCamera;
         }
 
-        // if none selected
+        // default to back camera
 
         if(!cameraSelect.value){
 
@@ -567,13 +560,15 @@ async function loadCameras(){
 
     }catch(err){
 
+        console.log(err);
+
         alert(
         "Camera permission required"
         );
     }
 }
 
-/* ---------- SAVE CAMERA ---------- */
+/* ---------- CAMERA SAVE ---------- */
 
 cameraSelect
 .addEventListener(
@@ -581,9 +576,7 @@ cameraSelect
 ()=>{
 
     localStorage.setItem(
-
         "selectedCamera",
-
         cameraSelect.value
     );
 });
@@ -597,7 +590,9 @@ async function startScanner(){
     try{
 
         const deviceId =
-        cameraSelect.value;
+        localStorage.getItem(
+        "selectedCamera"
+        ) || cameraSelect.value;
 
         stream =
         await navigator
@@ -605,10 +600,7 @@ async function startScanner(){
         .getUserMedia({
 
             video:{
-                deviceId:{
-                    exact:deviceId
-                },
-                facingMode:"environment",
+                deviceId:deviceId,
                 width:{ideal:1920},
                 height:{ideal:1080}
             }
@@ -618,6 +610,11 @@ async function startScanner(){
         stream;
 
         await video.play();
+
+        // restore selection visually
+
+        cameraSelect.value =
+        deviceId;
 
         track =
         stream
