@@ -10,7 +10,7 @@ initial-scale=1.0,
 maximum-scale=1.0,
 user-scalable=no">
 
-<title>Professional Asset Barcode Scanner</title>
+<title>Professional Barcode & QR Scanner</title>
 
 <style>
 
@@ -82,30 +82,21 @@ button:active{
 
 /* ---------- CAMERA ---------- */
 
-#frameWrap{
+#cameraContainer{
     position:relative;
     width:100%;
-    height:50vh;
+    height:34vh;
     overflow:hidden;
     background:black;
 }
 
-/* REAL CAMERA */
-
-#video{
+video{
     width:100%;
     height:100%;
     object-fit:cover;
-    display:block;
-
-    /* center zoom */
-
-    transform:scale(1.25);
-
-    transform-origin:center center;
 }
 
-/* ---------- OVERLAY ---------- */
+/* ---------- DARK OVERLAY ---------- */
 
 #overlay{
     position:absolute;
@@ -113,99 +104,98 @@ button:active{
     pointer-events:none;
 }
 
-/* ---------- VIEWFINDER ---------- */
+/* ---------- BARCODE VIEWFINDER ---------- */
 
-#roi{
+#viewfinder{
+
     position:absolute;
+
     left:50%;
     top:50%;
+
     transform:translate(-50%,-50%);
-    width:340px;
-    height:180px;
-    border:2px solid rgba(255,255,255,0.12);
-    border-radius:18px;
+
+    width:90%;
+    max-width:340px;
+
+    height:130px;
+
+    border:2px solid rgba(255,255,255,0.15);
+
+    border-radius:16px;
+
+    overflow:hidden;
 }
 
-/* top left */
+/* corners */
 
-#roi::before{
-    content:"";
+.corner{
     position:absolute;
-    top:-3px;
-    left:-3px;
-    width:50px;
-    height:50px;
-    border-top:5px solid var(--green);
-    border-left:5px solid var(--green);
-    border-top-left-radius:18px;
+    width:42px;
+    height:42px;
+    border-color:#22c55e;
+    border-style:solid;
 }
 
-/* bottom right */
-
-#roi::after{
-    content:"";
-    position:absolute;
-    right:-3px;
-    bottom:-3px;
-    width:50px;
-    height:50px;
-    border-right:5px solid var(--green);
-    border-bottom:5px solid var(--green);
-    border-bottom-right-radius:18px;
+.tl{
+    top:-2px;
+    left:-2px;
+    border-width:5px 0 0 5px;
+    border-top-left-radius:14px;
 }
 
-/* top right */
-
-.corner1{
-    position:absolute;
-    top:-3px;
-    right:-3px;
-    width:50px;
-    height:50px;
-    border-top:5px solid var(--green);
-    border-right:5px solid var(--green);
-    border-top-right-radius:18px;
+.tr{
+    top:-2px;
+    right:-2px;
+    border-width:5px 5px 0 0;
+    border-top-right-radius:14px;
 }
 
-/* bottom left */
+.bl{
+    bottom:-2px;
+    left:-2px;
+    border-width:0 0 5px 5px;
+    border-bottom-left-radius:14px;
+}
 
-.corner2{
-    position:absolute;
-    left:-3px;
-    bottom:-3px;
-    width:50px;
-    height:50px;
-    border-left:5px solid var(--green);
-    border-bottom:5px solid var(--green);
-    border-bottom-left-radius:18px;
+.br{
+    bottom:-2px;
+    right:-2px;
+    border-width:0 5px 5px 0;
+    border-bottom-right-radius:14px;
 }
 
 /* ---------- SCAN LINE ---------- */
 
 #scanline{
+
     position:absolute;
-    left:50%;
+
+    left:0;
     top:50%;
-    transform:translateX(-50%);
-    width:320px;
+
+    width:100%;
     height:3px;
-    background:var(--green);
-    box-shadow:0 0 10px var(--green);
+
+    background:#22c55e;
+
+    box-shadow:0 0 12px #22c55e;
+
     animation:scan 2s linear infinite;
 }
 
 @keyframes scan{
 
     0%{
-        margin-top:-75px;
+        transform:translateY(-45px);
     }
 
     50%{
-        margin-top:75px;
+        transform:translateY(45px);
     }
 
     100%{
-        margin-top:-75px;
+        transform:translateY(-45px);
     }
 }
 
@@ -213,9 +203,8 @@ button:active{
 
 .status{
     text-align:center;
-    padding:10px;
-    color:var(--green);
-    font-size:16px;
+    padding:12px;
+    color:#22c55e;
 }
 
 /* ---------- RESULT ---------- */
@@ -229,10 +218,10 @@ button:active{
 }
 
 .resultTitle{
-    color:var(--accent);
+    color:#22d3ee;
     font-size:18px;
-    margin-bottom:12px;
     font-weight:bold;
+    margin-bottom:12px;
 }
 
 .resultItem{
@@ -245,8 +234,8 @@ button:active{
 }
 
 .resultValue{
-    font-size:17px;
     margin-top:3px;
+    font-size:17px;
     word-break:break-word;
 }
 
@@ -259,10 +248,9 @@ button:active{
 .historyItem{
     background:#111827;
     padding:12px;
-    margin-bottom:10px;
     border-radius:12px;
-    border-left:4px solid var(--green);
-    font-size:14px;
+    margin-bottom:10px;
+    border-left:4px solid #22c55e;
     word-break:break-word;
 }
 
@@ -276,10 +264,10 @@ button:active{
     width:90%;
     max-width:400px;
     background:rgba(0,0,0,0.92);
-    border:2px solid var(--green);
+    border:2px solid #22c55e;
     border-radius:14px;
     padding:14px;
-    color:var(--green);
+    color:#22c55e;
     text-align:center;
     display:none;
     z-index:9999;
@@ -287,12 +275,54 @@ button:active{
 
 </style>
 
+<script type="module">
+
+import {
+BrowserMultiFormatReader,
+BarcodeFormat,
+DecodeHintType
+}
+from
+"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
+
+/* ---------- FORCE BARCODE SUPPORT ---------- */
+
+const hints =
+new Map();
+
+hints.set(
+
+    DecodeHintType.POSSIBLE_FORMATS,
+
+    [
+
+        BarcodeFormat.CODE_128,
+        BarcodeFormat.CODE_39,
+        BarcodeFormat.EAN_13,
+        BarcodeFormat.EAN_8,
+        BarcodeFormat.UPC_A,
+        BarcodeFormat.UPC_E,
+        BarcodeFormat.ITF,
+        BarcodeFormat.CODABAR,
+        BarcodeFormat.QR_CODE
+
+    ]
+);
+
+/* ---------- ZXING ---------- */
+
+window.reader =
+new BrowserMultiFormatReader(
+hints);
+
+</script>
+
 </head>
 
 <body>
 
 <header>
-Professional Asset Barcode Scanner
+Professional Barcode & QR Scanner
 </header>
 
 <!-- CONTROLS -->
@@ -325,22 +355,23 @@ Professional Asset Barcode Scanner
 
 <!-- CAMERA -->
 
-<div id="frameWrap">
+<div id="cameraContainer">
 
     <video id="video"
     playsinline></video>
 
     <div id="overlay">
 
-        <div id="roi">
+        <div id="viewfinder">
 
-            <div class="corner1"></div>
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
 
-            <div class="corner2"></div>
+            <div id="scanline"></div>
 
         </div>
-
-        <div id="scanline"></div>
 
     </div>
 
@@ -422,62 +453,34 @@ Scan History
 
 <script type="module">
 
-import {
-BrowserMultiFormatReader,
-BarcodeFormat,
-DecodeHintType
-}
-from
-"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
-
-/* ---------- ZXING ---------- */
-
-const hints =
-new Map();
-
-hints.set(
-DecodeHintType.POSSIBLE_FORMATS,
-[
-    BarcodeFormat.QR_CODE,
-    BarcodeFormat.CODE_128,
-    BarcodeFormat.CODE_39,
-    BarcodeFormat.EAN_13,
-    BarcodeFormat.EAN_8,
-    BarcodeFormat.UPC_A,
-    BarcodeFormat.UPC_E,
-    BarcodeFormat.ITF
-]
-);
-
-const codeReader =
-new BrowserMultiFormatReader(
-hints);
-
-/* ---------- CONFIG ---------- */
-
 const GAS_URL =
 "https://script.google.com/macros/s/AKfycbyUEjurhn07mG8zmal7W9HUwiCer_RABw503xgpR3WDSZs8SxxsssLs2roG0x96T-G5fQ/exec";
 
-/* ---------- DOM ---------- */
-
 const video =
-document.getElementById("video");
+document.getElementById(
+"video"
+);
+
+const reader =
+window.reader;
 
 const popup =
-document.getElementById("popup");
+document.getElementById(
+"popup"
+);
 
 const statusLabel =
-document.getElementById("status");
-
-/* ---------- VARIABLES ---------- */
+document.getElementById(
+"status"
+);
 
 let stream=null;
+
 let track=null;
 
 let torch=false;
-let mirror=false;
 
-let decodeRunning=false;
+let mirror=false;
 
 let lastText="";
 let lastScanTime=0;
@@ -517,14 +520,9 @@ async function loadCameras(){
 
         cams.forEach((cam,index)=>{
 
-            // skip invalid cameras
-
-            if(!cam.deviceId){
-                return;
-            }
-
             const option =
-            document.createElement(
+            document
+            .createElement(
             "option"
             );
 
@@ -540,26 +538,18 @@ async function loadCameras(){
             );
         });
 
-        // restore saved camera
-
-        const savedCam =
-        localStorage.getItem(
-        "selectedCamera"
+        const back =
+        cams.find(c=>
+        c.label
+        .toLowerCase()
+        .includes("back")
         );
 
-        if(savedCam){
+        if(back){
 
-            select.value =
-            savedCam;
+            select.value=
+            back.deviceId;
         }
-
-        select.onchange=()=>{
-
-            localStorage.setItem(
-                "selectedCamera",
-                select.value
-            );
-        };
 
     }catch(err){
 
@@ -582,28 +572,32 @@ async function startScanner(){
         "cameraSelect"
         ).value;
 
-        // save selected camera
-
-        localStorage.setItem(
-            "selectedCamera",
-            deviceId
-        );
-
         stream =
         await navigator
         .mediaDevices
         .getUserMedia({
 
             video:{
+
                 deviceId:{
                     exact:deviceId
                 },
-                width:{ideal:1920},
-                height:{ideal:1080}
+
+                width:{
+                    ideal:1920
+                },
+
+                height:{
+                    ideal:1080
+                },
+
+                focusMode:"continuous"
+
             }
+
         });
 
-        video.srcObject =
+        video.srcObject=
         stream;
 
         await video.play();
@@ -612,10 +606,44 @@ async function startScanner(){
         stream
         .getVideoTracks()[0];
 
-        startDecode();
+        /* FORCE CONTINUOUS AUTOFOCUS */
 
-        statusLabel.innerHTML =
+        try{
+
+            await track
+            .applyConstraints({
+
+                advanced:[{
+
+                    focusMode:
+                    "continuous"
+
+                }]
+            });
+
+        }catch(e){}
+
+        statusLabel.innerHTML=
         "Scanner Started";
+
+        /* ZXING DIRECT DECODE */
+
+        reader.decodeFromVideoDevice(
+
+            deviceId,
+
+            video,
+
+            (result,error)=>{
+
+                if(result){
+
+                    handleScan(
+                    result.text
+                    );
+                }
+            }
+        );
 
     }catch(err){
 
@@ -629,10 +657,8 @@ async function startScanner(){
 
 function stopScanner(){
 
-    stopDecode();
-
     try{
-        codeReader.reset();
+        reader.reset();
     }catch(e){}
 
     if(stream){
@@ -644,60 +670,15 @@ function stopScanner(){
         stream=null;
     }
 
-    statusLabel.innerHTML =
+    statusLabel.innerHTML=
     "Scanner Stopped";
-}
-
-/* ---------- DECODE ---------- */
-
-function startDecode(){
-
-    if(decodeRunning){
-        return;
-    }
-
-    decodeRunning=true;
-
-    codeReader
-    .decodeFromVideoDevice(
-
-        null,
-
-        video,
-
-        (result)=>{
-
-            if(!decodeRunning){
-                return;
-            }
-
-            if(result){
-
-                const text =
-                result.getText
-                ? result.getText()
-                : result.text;
-
-                handleScan(text);
-            }
-        }
-    );
-}
-
-function stopDecode(){
-
-    decodeRunning=false;
-
-    try{
-        codeReader.reset();
-    }catch(e){}
 }
 
 /* ---------- HANDLE SCAN ---------- */
 
 async function handleScan(text){
 
-    const now =
+    const now=
     Date.now();
 
     if(
@@ -724,7 +705,7 @@ async function handleScan(text){
     await searchAsset(text);
 }
 
-/* ---------- SEARCH DATABASE ---------- */
+/* ---------- SEARCH ---------- */
 
 async function searchAsset(code){
 
@@ -733,7 +714,7 @@ async function searchAsset(code){
         statusLabel.innerHTML=
         "Searching Database...";
 
-        const response=
+        const response =
         await fetch(
         GAS_URL,
         {
@@ -750,7 +731,7 @@ async function searchAsset(code){
             })
         });
 
-        const data=
+        const data =
         await response.json();
 
         if(data.found){
@@ -841,44 +822,45 @@ function addHistory(
     found
 ){
 
-    const div=
-    document.createElement(
+    const div =
+    document
+    .createElement(
     "div"
     );
 
     div.className=
     "historyItem";
 
-    let html=
+    let html =
     "<b>"+
     new Date()
     .toLocaleString()+
     "</b><br><br>";
 
-    html+=
+    html +=
     "<b>QR:</b><br>"+
     qr+
     "<br><br>";
 
     if(found){
 
-        html+=
+        html +=
         "<b>NO SIRI:</b><br>"+
         siri+
         "<br><br>";
 
-        html+=
+        html +=
         "<b>ASET:</b><br>"+
         aset+
         "<br><br>";
 
-        html+=
+        html +=
         "<b>LOKASI:</b><br>"+
         lokasi;
 
     }else{
 
-        html+=
+        html +=
         "<span style='color:#ef4444'>Asset Not Found</span>";
     }
 
@@ -899,7 +881,7 @@ async function toggleTorch(){
         return;
     }
 
-    const caps=
+    const caps =
     track.getCapabilities?.()
     || {};
 
@@ -914,7 +896,8 @@ async function toggleTorch(){
 
     torch=!torch;
 
-    await track.applyConstraints({
+    await track
+    .applyConstraints({
 
         advanced:[{
             torch:torch
@@ -937,12 +920,12 @@ function toggleMirror(){
     if(mirror){
 
         video.style.transform=
-        "scale(1.25) scaleX(-1)";
+        "scaleX(-1)";
 
     }else{
 
         video.style.transform=
-        "scale(1.25)";
+        "scaleX(1)";
     }
 
     showPopup(
