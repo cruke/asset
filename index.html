@@ -98,7 +98,7 @@ button:active{
     object-fit:cover;
     display:block;
 
-    /* CENTER ZOOM CROP */
+    /* CENTER ZOOM */
 
     transform:scale(1.25);
 
@@ -469,6 +469,9 @@ document.getElementById("popup");
 const statusLabel =
 document.getElementById("status");
 
+const cameraSelect =
+document.getElementById("cameraSelect");
+
 /* ---------- VARIABLES ---------- */
 
 let stream=null;
@@ -487,6 +490,13 @@ let lastScanTime=0;
 async function loadCameras(){
 
     try{
+
+        // restore previous selected camera
+
+        const previousCamera =
+        localStorage.getItem(
+        "selectedCamera"
+        ) || "";
 
         const temp =
         await navigator
@@ -508,12 +518,7 @@ async function loadCameras(){
         d.kind==="videoinput"
         );
 
-        const select =
-        document.getElementById(
-        "cameraSelect"
-        );
-
-        select.innerHTML="";
+        cameraSelect.innerHTML="";
 
         cams.forEach((cam,index)=>{
 
@@ -529,10 +534,36 @@ async function loadCameras(){
             cam.label ||
             "Camera "+(index+1);
 
-            select.appendChild(
+            cameraSelect.appendChild(
             option
             );
         });
+
+        // restore selected camera
+
+        if(previousCamera){
+
+            cameraSelect.value =
+            previousCamera;
+        }
+
+        // if none selected
+
+        if(!cameraSelect.value){
+
+            const backCam =
+            cams.find(cam=>
+            cam.label
+            .toLowerCase()
+            .includes("back")
+            );
+
+            if(backCam){
+
+                cameraSelect.value =
+                backCam.deviceId;
+            }
+        }
 
     }catch(err){
 
@@ -541,6 +572,21 @@ async function loadCameras(){
         );
     }
 }
+
+/* ---------- SAVE CAMERA ---------- */
+
+cameraSelect
+.addEventListener(
+"change",
+()=>{
+
+    localStorage.setItem(
+
+        "selectedCamera",
+
+        cameraSelect.value
+    );
+});
 
 /* ---------- START ---------- */
 
@@ -551,9 +597,7 @@ async function startScanner(){
     try{
 
         const deviceId =
-        document.getElementById(
-        "cameraSelect"
-        ).value;
+        cameraSelect.value;
 
         stream =
         await navigator
