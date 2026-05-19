@@ -51,7 +51,7 @@ header{
     object-fit:cover !important;
 }
 
-/* hide default scanner overlay */
+/* hide default overlay */
 
 #reader__scan_region img{
     display:none !important;
@@ -271,11 +271,22 @@ button:active{
 
 .historyItem{
     background:#111827;
-    padding:10px;
-    margin-bottom:8px;
-    border-radius:10px;
+    padding:12px;
+    margin-bottom:10px;
+    border-radius:12px;
     font-size:14px;
     word-break:break-word;
+    border-left:4px solid #22c55e;
+}
+
+.historyTitle{
+    color:#22d3ee;
+    font-size:15px;
+    margin-bottom:10px;
+}
+
+.notFound{
+    color:#ef4444;
 }
 
 </style>
@@ -290,25 +301,7 @@ button:active{
 Asset QR Scanner
 </header>
 
-<div id="cameraContainer">
-
-    <div id="reader"></div>
-
-    <div id="customOverlay">
-
-        <div id="roi">
-
-            <div class="corner1"></div>
-
-            <div class="corner2"></div>
-
-        </div>
-
-        <div id="scanline"></div>
-
-    </div>
-
-</div>
+<!-- CONTROLS -->
 
 <div class="controls">
 
@@ -335,6 +328,30 @@ Asset QR Scanner
     </div>
 
 </div>
+
+<!-- CAMERA -->
+
+<div id="cameraContainer">
+
+    <div id="reader"></div>
+
+    <div id="customOverlay">
+
+        <div id="roi">
+
+            <div class="corner1"></div>
+
+            <div class="corner2"></div>
+
+        </div>
+
+        <div id="scanline"></div>
+
+    </div>
+
+</div>
+
+<!-- STATUS -->
 
 <div class="status"
 id="status">
@@ -396,7 +413,9 @@ Waiting...
 
 <div id="history">
 
-<b>Scan History</b>
+<div class="historyTitle">
+Scan History
+</div>
 
 <div id="historyList"></div>
 
@@ -431,12 +450,10 @@ let lastScanTime=0;
 async function loadCameras(){
 
     const devices =
-    await Html5Qrcode
-    .getCameras();
+    await Html5Qrcode.getCameras();
 
     const select =
-    document
-    .getElementById(
+    document.getElementById(
     "cameraSelect"
     );
 
@@ -445,8 +462,7 @@ async function loadCameras(){
     devices.forEach((device,index)=>{
 
         const option =
-        document
-        .createElement(
+        document.createElement(
         "option"
         );
 
@@ -486,8 +502,7 @@ async function startScanner(){
     await stopScanner();
 
     currentCameraId =
-    document
-    .getElementById(
+    document.getElementById(
     "cameraSelect"
     ).value;
 
@@ -516,6 +531,8 @@ async function startScanner(){
                 const now =
                 Date.now();
 
+                // prevent repeated scans
+
                 if(
                     decodedText === lastText &&
                     (now - lastScanTime)
@@ -529,14 +546,6 @@ async function startScanner(){
 
                 lastScanTime =
                 now;
-
-                showPopup(
-                decodedText
-                );
-
-                addHistory(
-                decodedText
-                );
 
                 beep();
 
@@ -554,8 +563,7 @@ async function startScanner(){
             }
         );
 
-        document
-        .getElementById(
+        document.getElementById(
         "status"
         ).innerHTML=
         "Scanner Started";
@@ -574,11 +582,9 @@ async function stopScanner(){
 
         if(html5QrCode){
 
-            await html5QrCode
-            .stop();
+            await html5QrCode.stop();
 
-            await html5QrCode
-            .clear();
+            await html5QrCode.clear();
         }
 
     }catch(e){}
@@ -590,8 +596,7 @@ async function searchAsset(code){
 
     try{
 
-        document
-        .getElementById(
+        document.getElementById(
         "status"
         ).innerHTML=
         "Searching Database...";
@@ -622,35 +627,38 @@ async function searchAsset(code){
 
         if(data.found){
 
-            document
-            .getElementById(
+            document.getElementById(
             "status"
             ).innerHTML=
             "Asset Found";
 
-            document
-            .getElementById(
+            document.getElementById(
             "resultBox"
             ).style.display=
             "block";
 
-            document
-            .getElementById(
+            document.getElementById(
             "resultSiri"
             ).innerHTML=
             data.no_siri;
 
-            document
-            .getElementById(
+            document.getElementById(
             "resultAset"
             ).innerHTML=
             data.keterangan;
 
-            document
-            .getElementById(
+            document.getElementById(
             "resultLokasi"
             ).innerHTML=
             data.lokasi;
+
+            addHistory(
+                code,
+                data.no_siri,
+                data.keterangan,
+                data.lokasi,
+                true
+            );
 
             showPopup(
             "Asset Found"
@@ -658,17 +666,23 @@ async function searchAsset(code){
 
         }else{
 
-            document
-            .getElementById(
+            document.getElementById(
             "status"
             ).innerHTML=
             "Asset Not Found";
 
-            document
-            .getElementById(
+            document.getElementById(
             "resultBox"
             ).style.display=
             "none";
+
+            addHistory(
+                code,
+                "",
+                "",
+                "",
+                false
+            );
 
             showPopup(
             "Asset Not Found"
@@ -679,8 +693,7 @@ async function searchAsset(code){
 
         console.log(err);
 
-        document
-        .getElementById(
+        document.getElementById(
         "status"
         ).innerHTML=
         "Network Error";
@@ -689,6 +702,64 @@ async function searchAsset(code){
         "Network Error"
         );
     }
+}
+
+/* ---------- ADD HISTORY ---------- */
+
+function addHistory(
+    qr,
+    siri,
+    aset,
+    lokasi,
+    found
+){
+
+    const div =
+    document.createElement(
+    "div"
+    );
+
+    div.className=
+    "historyItem";
+
+    let html =
+    "<b>"+
+    new Date()
+    .toLocaleString()+
+    "</b><br><br>";
+
+    html +=
+    "<b>QR:</b><br>"+
+    qr+
+    "<br><br>";
+
+    if(found){
+
+        html +=
+        "<b>NO SIRI:</b><br>"+
+        siri+
+        "<br><br>";
+
+        html +=
+        "<b>ASET:</b><br>"+
+        aset+
+        "<br><br>";
+
+        html +=
+        "<b>LOKASI:</b><br>"+
+        lokasi;
+
+    }else{
+
+        html +=
+        "<span class='notFound'>Asset Not Found</span>";
+    }
+
+    div.innerHTML=html;
+
+    document.getElementById(
+    "historyList"
+    ).prepend(div);
 }
 
 /* ---------- TORCH ---------- */
@@ -793,8 +864,7 @@ function beep(){
 function showPopup(text){
 
     const popup =
-    document
-    .getElementById(
+    document.getElementById(
     "popup"
     );
 
@@ -814,32 +884,6 @@ function showPopup(text){
         "none";
 
     },2500);
-}
-
-/* ---------- HISTORY ---------- */
-
-function addHistory(text){
-
-    const div =
-    document
-    .createElement(
-    "div"
-    );
-
-    div.className=
-    "historyItem";
-
-    div.innerHTML=
-    "<b>"+
-    new Date()
-    .toLocaleTimeString()+
-    "</b><br>"+text;
-
-    document
-    .getElementById(
-    "historyList"
-    )
-    .prepend(div);
 }
 
 /* ---------- INIT ---------- */
