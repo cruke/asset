@@ -40,7 +40,7 @@ header{
     background:black;
 }
 
-/* crop center only */
+/* center crop */
 
 #reader video{
     width:100%;
@@ -52,20 +52,73 @@ header{
     transform:translateY(-50%);
 }
 
-/* ---------- ROI BOX ---------- */
+/* ---------- VIEWFINDER BOX ---------- */
 
 #roi{
     position:absolute;
     left:50%;
     top:50%;
     transform:translate(-50%,-50%);
-    width:240px;
-    height:240px;
-    border:3px solid #22c55e;
+    width:260px;
+    height:260px;
+    border:2px solid rgba(255,255,255,0.15);
     border-radius:20px;
-    box-shadow:0 0 15px #22c55e;
-    pointer-events:none;
     z-index:10;
+    pointer-events:none;
+}
+
+/* top left */
+
+#roi::before{
+    content:"";
+    position:absolute;
+    top:-3px;
+    left:-3px;
+    width:60px;
+    height:60px;
+    border-top:5px solid #22c55e;
+    border-left:5px solid #22c55e;
+    border-top-left-radius:20px;
+}
+
+/* bottom right */
+
+#roi::after{
+    content:"";
+    position:absolute;
+    right:-3px;
+    bottom:-3px;
+    width:60px;
+    height:60px;
+    border-right:5px solid #22c55e;
+    border-bottom:5px solid #22c55e;
+    border-bottom-right-radius:20px;
+}
+
+/* top right */
+
+.corner1{
+    position:absolute;
+    top:-3px;
+    right:-3px;
+    width:60px;
+    height:60px;
+    border-top:5px solid #22c55e;
+    border-right:5px solid #22c55e;
+    border-top-right-radius:20px;
+}
+
+/* bottom left */
+
+.corner2{
+    position:absolute;
+    left:-3px;
+    bottom:-3px;
+    width:60px;
+    height:60px;
+    border-left:5px solid #22c55e;
+    border-bottom:5px solid #22c55e;
+    border-bottom-left-radius:20px;
 }
 
 /* ---------- SCAN LINE ---------- */
@@ -191,7 +244,13 @@ QR & Barcode Scanner
 
 <div id="reader">
 
-    <div id="roi"></div>
+    <div id="roi">
+
+        <div class="corner1"></div>
+
+        <div class="corner2"></div>
+
+    </div>
 
     <div id="scanline"></div>
 
@@ -350,7 +409,7 @@ async function startScanner(){
                 const now =
                 Date.now();
 
-                // prevent repeated scan
+                // prevent repeated scans
 
                 if(
                     decodedText === lastText &&
