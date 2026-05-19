@@ -180,7 +180,6 @@ let torch=false;
 let mirror=false;
 
 let lastText="";
-let lastScanTime=0;
 
 /* ---------- LOAD CAMERAS ---------- */
 
@@ -241,7 +240,7 @@ async function loadCameras(){
 
 async function startScanner(){
 
-    await stopScanner();
+    stopScanner();
 
     currentCameraId =
     document
@@ -271,24 +270,15 @@ async function startScanner(){
 
             async(decodedText)=>{
 
-                const now =
-                Date.now();
-
-                // prevent repeated same scan
-
                 if(
-                    decodedText === lastText &&
-                    (now - lastScanTime)
-                    < 3000
+                decodedText===
+                lastText
                 ){
                     return;
                 }
 
-                lastText =
+                lastText=
                 decodedText;
-
-                lastScanTime =
-                now;
 
                 showPopup(
                 decodedText
@@ -311,6 +301,12 @@ async function startScanner(){
                 await sendToSheet(
                 decodedText
                 );
+
+                setTimeout(()=>{
+
+                    lastText="";
+
+                },2000);
             }
         );
 
