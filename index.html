@@ -96,7 +96,7 @@ video{
     object-fit:cover;
 }
 
-/* ---------- DARK OVERLAY ---------- */
+/* ---------- OVERLAY ---------- */
 
 #overlay{
     position:absolute;
@@ -104,7 +104,7 @@ video{
     pointer-events:none;
 }
 
-/* ---------- BARCODE VIEWFINDER ---------- */
+/* ---------- VIEWFINDER ---------- */
 
 #viewfinder{
 
@@ -285,7 +285,7 @@ DecodeHintType
 from
 "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
 
-/* ---------- FORCE BARCODE SUPPORT ---------- */
+/* ---------- BARCODE SUPPORT ---------- */
 
 const hints =
 new Map();
@@ -308,8 +308,6 @@ hints.set(
 
     ]
 );
-
-/* ---------- ZXING ---------- */
 
 window.reader =
 new BrowserMultiFormatReader(
@@ -485,6 +483,37 @@ let mirror=false;
 let lastText="";
 let lastScanTime=0;
 
+/* ---------- TTS ---------- */
+
+function speak(text){
+
+    try{
+
+        window.speechSynthesis.cancel();
+
+        const utter =
+        new SpeechSynthesisUtterance(
+        text
+        );
+
+        utter.lang="en-US";
+
+        utter.rate=1;
+
+        utter.pitch=1;
+
+        utter.volume=1;
+
+        speechSynthesis.speak(
+        utter
+        );
+
+    }catch(err){
+
+        console.log(err);
+    }
+}
+
 /* ---------- LOAD CAMERAS ---------- */
 
 async function loadCameras(){
@@ -606,8 +635,6 @@ async function startScanner(){
         stream
         .getVideoTracks()[0];
 
-        /* FORCE CONTINUOUS AUTOFOCUS */
-
         try{
 
             await track
@@ -626,7 +653,9 @@ async function startScanner(){
         statusLabel.innerHTML=
         "Scanner Started";
 
-        /* ZXING DIRECT DECODE */
+        speak(
+        "Scanner started"
+        );
 
         reader.decodeFromVideoDevice(
 
@@ -714,6 +743,10 @@ async function searchAsset(code){
         statusLabel.innerHTML=
         "Searching Database...";
 
+        speak(
+        "Scanning database"
+        );
+
         const response =
         await fetch(
         GAS_URL,
@@ -775,6 +808,15 @@ async function searchAsset(code){
             "Asset Found"
             );
 
+            speak(
+
+                "Asset found. " +
+
+                "Current location is " +
+
+                data.lokasi
+            );
+
         }else{
 
             statusLabel.innerHTML=
@@ -797,6 +839,10 @@ async function searchAsset(code){
             showPopup(
             "Asset Not Found"
             );
+
+            speak(
+            "Asset not found"
+            );
         }
 
     }catch(err){
@@ -808,6 +854,10 @@ async function searchAsset(code){
 
         showPopup(
         "Network Error"
+        );
+
+        speak(
+        "Network error"
         );
     }
 }
@@ -909,6 +959,12 @@ async function toggleTorch(){
     ? "Torch ON"
     : "Torch OFF"
     );
+
+    speak(
+    torch
+    ? "Torch on"
+    : "Torch off"
+    );
 }
 
 /* ---------- MIRROR ---------- */
@@ -932,6 +988,12 @@ function toggleMirror(){
     mirror
     ? "Mirror ON"
     : "Mirror OFF"
+    );
+
+    speak(
+    mirror
+    ? "Mirror on"
+    : "Mirror off"
     );
 }
 
