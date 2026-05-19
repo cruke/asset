@@ -90,13 +90,18 @@ button:active{
     background:black;
 }
 
+/* REAL CAMERA */
+
 #video{
     width:100%;
     height:100%;
     object-fit:cover;
     display:block;
 
+    /* center zoom */
+
     transform:scale(1.25);
+
     transform-origin:center center;
 }
 
@@ -464,9 +469,6 @@ document.getElementById("popup");
 const statusLabel =
 document.getElementById("status");
 
-const cameraSelect =
-document.getElementById("cameraSelect");
-
 /* ---------- VARIABLES ---------- */
 
 let stream=null;
@@ -485,11 +487,6 @@ let lastScanTime=0;
 async function loadCameras(){
 
     try{
-
-        const savedCamera =
-        localStorage.getItem(
-        "selectedCamera"
-        ) || "";
 
         const temp =
         await navigator
@@ -511,9 +508,20 @@ async function loadCameras(){
         d.kind==="videoinput"
         );
 
-        cameraSelect.innerHTML="";
+        const select =
+        document.getElementById(
+        "cameraSelect"
+        );
+
+        select.innerHTML="";
 
         cams.forEach((cam,index)=>{
+
+            // skip invalid cameras
+
+            if(!cam.deviceId){
+                return;
+            }
 
             const option =
             document.createElement(
@@ -527,59 +535,39 @@ async function loadCameras(){
             cam.label ||
             "Camera "+(index+1);
 
-            cameraSelect.appendChild(
+            select.appendChild(
             option
             );
         });
 
-        // restore selected camera
+        // restore saved camera
 
-        if(savedCamera){
+        const savedCam =
+        localStorage.getItem(
+        "selectedCamera"
+        );
 
-            cameraSelect.value =
-            savedCamera;
+        if(savedCam){
+
+            select.value =
+            savedCam;
         }
 
-        // default to back camera
+        select.onchange=()=>{
 
-        if(!cameraSelect.value){
-
-            const backCam =
-            cams.find(cam=>
-            cam.label
-            .toLowerCase()
-            .includes("back")
+            localStorage.setItem(
+                "selectedCamera",
+                select.value
             );
-
-            if(backCam){
-
-                cameraSelect.value =
-                backCam.deviceId;
-            }
-        }
+        };
 
     }catch(err){
-
-        console.log(err);
 
         alert(
         "Camera permission required"
         );
     }
 }
-
-/* ---------- CAMERA SAVE ---------- */
-
-cameraSelect
-.addEventListener(
-"change",
-()=>{
-
-    localStorage.setItem(
-        "selectedCamera",
-        cameraSelect.value
-    );
-});
 
 /* ---------- START ---------- */
 
@@ -590,9 +578,16 @@ async function startScanner(){
     try{
 
         const deviceId =
-        localStorage.getItem(
-        "selectedCamera"
-        ) || cameraSelect.value;
+        document.getElementById(
+        "cameraSelect"
+        ).value;
+
+        // save selected camera
+
+        localStorage.setItem(
+            "selectedCamera",
+            deviceId
+        );
 
         stream =
         await navigator
@@ -600,7 +595,9 @@ async function startScanner(){
         .getUserMedia({
 
             video:{
-                deviceId:deviceId,
+                deviceId:{
+                    exact:deviceId
+                },
                 width:{ideal:1920},
                 height:{ideal:1080}
             }
@@ -610,11 +607,6 @@ async function startScanner(){
         stream;
 
         await video.play();
-
-        // restore selection visually
-
-        cameraSelect.value =
-        deviceId;
 
         track =
         stream
