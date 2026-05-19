@@ -10,29 +10,80 @@ initial-scale=1.0,
 maximum-scale=1.0,
 user-scalable=no">
 
-<title>Asset QR Scanner</title>
+<title>Asset QR & Barcode Scanner</title>
 
 <style>
 
+:root{
+    --bg:#0f172a;
+    --fg:#e2e8f0;
+    --accent:#22d3ee;
+    --green:#22c55e;
+    --red:#ef4444;
+}
+
+*{
+    box-sizing:border-box;
+}
+
 body{
     margin:0;
-    background:#0f172a;
-    color:white;
+    background:var(--bg);
+    color:var(--fg);
     font-family:Arial,sans-serif;
     overflow-x:hidden;
 }
 
 header{
-    text-align:center;
     padding:14px;
+    text-align:center;
     font-size:22px;
     font-weight:bold;
-    color:#22d3ee;
+    color:var(--accent);
+    background:#111827;
+    border-bottom:2px solid var(--accent);
+}
+
+/* ---------- CONTROLS ---------- */
+
+.controls{
+    padding:12px;
+}
+
+select{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:#111827;
+    color:white;
+    font-size:16px;
+    margin-bottom:10px;
+}
+
+.buttons{
+    display:grid;
+    grid-template-columns:
+    repeat(2,1fr);
+    gap:10px;
+}
+
+button{
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:#111827;
+    color:white;
+    font-size:16px;
+}
+
+button:active{
+    transform:scale(0.97);
 }
 
 /* ---------- CAMERA ---------- */
 
-#cameraContainer{
+#frameWrap{
     position:relative;
     width:100%;
     height:50vh;
@@ -40,33 +91,23 @@ header{
     background:black;
 }
 
-#reader{
+#video{
+    display:none;
+}
+
+#view{
     width:100%;
     height:100%;
+    object-fit:cover;
+    display:block;
 }
 
-#reader video{
-    width:100% !important;
-    height:100% !important;
-    object-fit:cover !important;
-}
-
-/* hide default overlay */
-
-#reader__scan_region img{
-    display:none !important;
-}
-
-#reader__dashboard{
-    display:none !important;
-}
-
-/* ---------- CUSTOM OVERLAY ---------- */
-
-#customOverlay{
+#overlay{
     position:absolute;
-    inset:0;
-    z-index:999;
+    left:0;
+    top:0;
+    width:100%;
+    height:100%;
     pointer-events:none;
 }
 
@@ -81,6 +122,7 @@ header{
     height:260px;
     border:2px solid rgba(255,255,255,0.15);
     border-radius:20px;
+    z-index:10;
 }
 
 /* top left */
@@ -165,43 +207,6 @@ header{
     }
 }
 
-/* ---------- CONTROLS ---------- */
-
-.controls{
-    padding:12px;
-}
-
-select{
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:12px;
-    background:#111827;
-    color:white;
-    font-size:16px;
-    margin-bottom:10px;
-}
-
-.buttons{
-    display:grid;
-    grid-template-columns:
-    repeat(2,1fr);
-    gap:10px;
-}
-
-button{
-    padding:14px;
-    border:none;
-    border-radius:12px;
-    background:#111827;
-    color:white;
-    font-size:16px;
-}
-
-button:active{
-    transform:scale(0.97);
-}
-
 /* ---------- STATUS ---------- */
 
 .status{
@@ -224,13 +229,12 @@ button:active{
 .resultTitle{
     color:#22d3ee;
     margin-bottom:10px;
-    font-weight:bold;
     font-size:18px;
+    font-weight:bold;
 }
 
 .resultItem{
     margin-bottom:12px;
-    word-break:break-word;
 }
 
 .resultLabel{
@@ -241,6 +245,7 @@ button:active{
 .resultValue{
     font-size:17px;
     margin-top:3px;
+    word-break:break-word;
 }
 
 /* ---------- POPUP ---------- */
@@ -269,20 +274,20 @@ button:active{
     padding:12px;
 }
 
-.historyItem{
-    background:#111827;
-    padding:12px;
-    margin-bottom:10px;
-    border-radius:12px;
-    font-size:14px;
-    word-break:break-word;
-    border-left:4px solid #22c55e;
-}
-
 .historyTitle{
     color:#22d3ee;
-    font-size:15px;
     margin-bottom:10px;
+    font-size:18px;
+    font-weight:bold;
+}
+
+.historyItem{
+    background:#111827;
+    border-left:4px solid #22c55e;
+    padding:12px;
+    border-radius:12px;
+    margin-bottom:10px;
+    word-break:break-word;
 }
 
 .notFound{
@@ -291,14 +296,25 @@ button:active{
 
 </style>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<script type="module">
+
+import {
+BrowserMultiFormatReader
+}
+from
+"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
+
+window.ZXING_Reader =
+new BrowserMultiFormatReader();
+
+</script>
 
 </head>
 
 <body>
 
 <header>
-Asset QR Scanner
+Asset QR & Barcode Scanner
 </header>
 
 <!-- CONTROLS -->
@@ -309,19 +325,19 @@ Asset QR Scanner
 
     <div class="buttons">
 
-        <button onclick="startScanner()">
+        <button id="startBtn">
         Start
         </button>
 
-        <button onclick="stopScanner()">
+        <button id="stopBtn">
         Stop
         </button>
 
-        <button onclick="toggleTorch()">
+        <button id="torchBtn">
         Torch
         </button>
 
-        <button onclick="toggleMirror()">
+        <button id="mirrorBtn">
         Mirror
         </button>
 
@@ -331,23 +347,24 @@ Asset QR Scanner
 
 <!-- CAMERA -->
 
-<div id="cameraContainer">
+<div id="frameWrap">
 
-    <div id="reader"></div>
+    <video id="video"
+    playsinline></video>
 
-    <div id="customOverlay">
+    <canvas id="view"></canvas>
 
-        <div id="roi">
+    <canvas id="overlay"></canvas>
 
-            <div class="corner1"></div>
+    <div id="roi">
 
-            <div class="corner2"></div>
+        <div class="corner1"></div>
 
-        </div>
-
-        <div id="scanline"></div>
+        <div class="corner2"></div>
 
     </div>
+
+    <div id="scanline"></div>
 
 </div>
 
@@ -413,11 +430,11 @@ Waiting...
 
 <div id="history">
 
-<div class="historyTitle">
-Scan History
-</div>
+    <div class="historyTitle">
+    Scan History
+    </div>
 
-<div id="historyList"></div>
+    <div id="historyList"></div>
 
 </div>
 
@@ -425,145 +442,168 @@ Scan History
 
 <div id="popup"></div>
 
-<script>
+<script type="module">
 
-/* ---------- GOOGLE APPS SCRIPT ---------- */
+/* ---------- CONFIG ---------- */
 
 const GAS_URL =
 "https://script.google.com/macros/s/AKfycbyUEjurhn07mG8zmal7W9HUwiCer_RABw503xgpR3WDSZs8SxxsssLs2roG0x96T-G5fQ/exec";
 
-/* ---------- VARIABLES ---------- */
+/* ---------- DOM ---------- */
 
-let html5QrCode;
+const video=
+document.getElementById("video");
 
-let currentCameraId="";
+const view=
+document.getElementById("view");
 
-let torch=false;
+const overlay=
+document.getElementById("overlay");
+
+const vctx=
+view.getContext("2d");
+
+const ctx=
+overlay.getContext("2d");
+
+const cameraSelect=
+document.getElementById("cameraSelect");
+
+const codeReader=
+window.ZXING_Reader;
+
+/* ---------- STATE ---------- */
+
+let stream=null;
+
+let track=null;
+
+let vw=0;
+
+let vh=0;
+
+let cropY=0;
+
+let cropH=0;
+
+let renderRunning=false;
+
+let decoderRunning=false;
 
 let mirror=false;
 
+let torch=false;
+
 let lastText="";
+
 let lastScanTime=0;
 
 /* ---------- LOAD CAMERAS ---------- */
 
 async function loadCameras(){
 
-    const devices =
-    await Html5Qrcode.getCameras();
+    const temp =
+    await navigator
+    .mediaDevices
+    .getUserMedia({
+        video:true
+    });
 
-    const select =
-    document.getElementById(
-    "cameraSelect"
+    temp.getTracks()
+    .forEach(t=>t.stop());
+
+    const devices =
+    await navigator
+    .mediaDevices
+    .enumerateDevices();
+
+    const cams =
+    devices.filter(d=>
+    d.kind==="videoinput"
     );
 
-    select.innerHTML="";
+    cameraSelect.innerHTML="";
 
-    devices.forEach((device,index)=>{
+    cams.forEach((cam,index)=>{
 
         const option =
-        document.createElement(
+        document
+        .createElement(
         "option"
         );
 
         option.value =
-        device.id;
+        cam.deviceId;
 
-        option.text =
-        device.label ||
+        option.textContent =
+        cam.label ||
         "Camera "+(index+1);
 
-        select.appendChild(
+        cameraSelect
+        .appendChild(
         option
         );
     });
-
-    const backCam =
-    devices.find(d=>
-    d.label
-    .toLowerCase()
-    .includes("back")
-    );
-
-    if(backCam){
-
-        select.value =
-        backCam.id;
-    }
-
-    currentCameraId =
-    select.value;
 }
 
 /* ---------- START ---------- */
 
 async function startScanner(){
 
-    await stopScanner();
-
-    currentCameraId =
-    document.getElementById(
-    "cameraSelect"
-    ).value;
-
-    html5QrCode =
-    new Html5Qrcode(
-    "reader"
-    );
+    stopScanner();
 
     try{
 
-        await html5QrCode.start(
+        const selectedDeviceId =
+        cameraSelect.value;
 
-            currentCameraId,
+        stream =
+        await navigator
+        .mediaDevices
+        .getUserMedia({
 
-            {
-                fps:10,
-
-                qrbox:{
-                    width:240,
-                    height:240
+            video:{
+                deviceId:{
+                    exact:
+                    selectedDeviceId
                 }
-            },
-
-            async(decodedText)=>{
-
-                const now =
-                Date.now();
-
-                // prevent repeated scans
-
-                if(
-                    decodedText === lastText &&
-                    (now - lastScanTime)
-                    < 3000
-                ){
-                    return;
-                }
-
-                lastText =
-                decodedText;
-
-                lastScanTime =
-                now;
-
-                beep();
-
-                if(
-                navigator.vibrate
-                ){
-                    navigator.vibrate(
-                    [120,50,120]
-                    );
-                }
-
-                await searchAsset(
-                decodedText
-                );
             }
+        });
+
+        video.srcObject=
+        stream;
+
+        await video.play();
+
+        track =
+        stream.getVideoTracks()[0];
+
+        vw=
+        video.videoWidth;
+
+        vh=
+        video.videoHeight;
+
+        cropY=
+        Math.floor(vh/3);
+
+        cropH=
+        Math.floor(vh/3);
+
+        view.width=vw;
+        view.height=cropH;
+
+        overlay.width=vw;
+        overlay.height=cropH;
+
+        startRender();
+
+        startDecode(
+        selectedDeviceId
         );
 
-        document.getElementById(
+        document
+        .getElementById(
         "status"
         ).innerHTML=
         "Scanner Started";
@@ -576,18 +616,213 @@ async function startScanner(){
 
 /* ---------- STOP ---------- */
 
-async function stopScanner(){
+function stopScanner(){
+
+    decoderRunning=false;
+
+    renderRunning=false;
 
     try{
+        codeReader.reset();
+    }catch(e){}
 
-        if(html5QrCode){
+    if(stream){
 
-            await html5QrCode.stop();
+        stream
+        .getTracks()
+        .forEach(t=>t.stop());
 
-            await html5QrCode.clear();
+        stream=null;
+    }
+}
+
+/* ---------- RENDER ---------- */
+
+function startRender(){
+
+    renderRunning=true;
+
+    (function loop(){
+
+        if(!renderRunning){
+            return;
         }
 
-    }catch(e){}
+        requestAnimationFrame(loop);
+
+        vctx.save();
+
+        if(mirror){
+
+            vctx.translate(
+            view.width,
+            0
+            );
+
+            vctx.scale(-1,1);
+        }
+
+        vctx.drawImage(
+            video,
+            0,
+            cropY,
+            vw,
+            cropH,
+            0,
+            0,
+            view.width,
+            view.height
+        );
+
+        vctx.restore();
+
+    })();
+}
+
+/* ---------- MAP POINT ---------- */
+
+function mapPoint(p){
+
+    let x=
+    p.getX
+    ? p.getX()
+    : p.x;
+
+    let y=
+    p.getY
+    ? p.getY()
+    : p.y;
+
+    if(mirror){
+        x=vw-x;
+    }
+
+    y-=cropY;
+
+    return {x,y};
+}
+
+/* ---------- DRAW BOX ---------- */
+
+function drawBox(points){
+
+    ctx.clearRect(
+        0,
+        0,
+        overlay.width,
+        overlay.height
+    );
+
+    if(!points.length){
+        return;
+    }
+
+    const mapped =
+    points.map(mapPoint);
+
+    let minX=999999;
+    let minY=999999;
+    let maxX=0;
+    let maxY=0;
+
+    mapped.forEach(p=>{
+
+        minX=Math.min(minX,p.x);
+        minY=Math.min(minY,p.y);
+        maxX=Math.max(maxX,p.x);
+        maxY=Math.max(maxY,p.y);
+    });
+
+    ctx.strokeStyle=
+    "#22d3ee";
+
+    ctx.lineWidth=4;
+
+    ctx.strokeRect(
+        minX-10,
+        minY-10,
+        (maxX-minX)+20,
+        (maxY-minY)+20
+    );
+
+    setTimeout(()=>{
+
+        ctx.clearRect(
+            0,
+            0,
+            overlay.width,
+            overlay.height
+        );
+
+    },200);
+}
+
+/* ---------- DECODE ---------- */
+
+function startDecode(
+selectedDeviceId
+){
+
+    decoderRunning=true;
+
+    codeReader
+    .decodeFromVideoDevice(
+
+        selectedDeviceId,
+
+        video,
+
+        async(res)=>{
+
+            if(
+            !decoderRunning
+            ){
+                return;
+            }
+
+            if(res){
+
+                const text =
+                String(
+                res.text || ""
+                ).trim();
+
+                const now =
+                Date.now();
+
+                if(
+                    text===lastText &&
+                    (now-lastScanTime)
+                    < 3000
+                ){
+                    return;
+                }
+
+                lastText=text;
+
+                lastScanTime=now;
+
+                drawBox(
+                res.resultPoints
+                || []
+                );
+
+                beep();
+
+                if(
+                navigator.vibrate
+                ){
+                    navigator.vibrate(
+                    [120,50,120]
+                    );
+                }
+
+                await searchAsset(
+                text
+                );
+            }
+        }
+    );
 }
 
 /* ---------- SEARCH DATABASE ---------- */
@@ -596,7 +831,8 @@ async function searchAsset(code){
 
     try{
 
-        document.getElementById(
+        document
+        .getElementById(
         "status"
         ).innerHTML=
         "Searching Database...";
@@ -614,40 +850,41 @@ async function searchAsset(code){
             },
 
             body:JSON.stringify({
-
                 id:code
-
             })
         });
 
         const data =
         await response.json();
 
-        console.log(data);
-
         if(data.found){
 
-            document.getElementById(
+            document
+            .getElementById(
             "status"
             ).innerHTML=
             "Asset Found";
 
-            document.getElementById(
+            document
+            .getElementById(
             "resultBox"
             ).style.display=
             "block";
 
-            document.getElementById(
+            document
+            .getElementById(
             "resultSiri"
             ).innerHTML=
             data.no_siri;
 
-            document.getElementById(
+            document
+            .getElementById(
             "resultAset"
             ).innerHTML=
             data.keterangan;
 
-            document.getElementById(
+            document
+            .getElementById(
             "resultLokasi"
             ).innerHTML=
             data.lokasi;
@@ -666,12 +903,14 @@ async function searchAsset(code){
 
         }else{
 
-            document.getElementById(
+            document
+            .getElementById(
             "status"
             ).innerHTML=
             "Asset Not Found";
 
-            document.getElementById(
+            document
+            .getElementById(
             "resultBox"
             ).style.display=
             "none";
@@ -693,7 +932,8 @@ async function searchAsset(code){
 
         console.log(err);
 
-        document.getElementById(
+        document
+        .getElementById(
         "status"
         ).innerHTML=
         "Network Error";
@@ -704,18 +944,19 @@ async function searchAsset(code){
     }
 }
 
-/* ---------- ADD HISTORY ---------- */
+/* ---------- HISTORY ---------- */
 
 function addHistory(
-    qr,
-    siri,
-    aset,
-    lokasi,
-    found
+qr,
+siri,
+aset,
+lokasi,
+found
 ){
 
     const div =
-    document.createElement(
+    document
+    .createElement(
     "div"
     );
 
@@ -757,39 +998,48 @@ function addHistory(
 
     div.innerHTML=html;
 
-    document.getElementById(
+    document
+    .getElementById(
     "historyList"
-    ).prepend(div);
+    )
+    .prepend(div);
 }
 
 /* ---------- TORCH ---------- */
 
 async function toggleTorch(){
 
-    try{
+    if(!track){
+        return;
+    }
 
-        torch=!torch;
+    const caps =
+    track.getCapabilities();
 
-        await html5QrCode
-        .applyVideoConstraints({
-
-            advanced:[{
-                torch:torch
-            }]
-        });
-
-        showPopup(
-        torch
-        ? "Torch ON"
-        : "Torch OFF"
-        );
-
-    }catch(err){
+    if(!caps.torch){
 
         alert(
         "Torch not supported"
         );
+
+        return;
     }
+
+    torch=!torch;
+
+    await track
+    .applyConstraints({
+
+        advanced:[{
+            torch:torch
+        }]
+    });
+
+    showPopup(
+    torch
+    ? "Torch ON"
+    : "Torch OFF"
+    );
 }
 
 /* ---------- MIRROR ---------- */
@@ -797,25 +1047,6 @@ async function toggleTorch(){
 function toggleMirror(){
 
     mirror=!mirror;
-
-    const video =
-    document.querySelector(
-    "#reader video"
-    );
-
-    if(video){
-
-        if(mirror){
-
-            video.style.transform=
-            "scaleX(-1)";
-
-        }else{
-
-            video.style.transform=
-            "scaleX(1)";
-        }
-    }
 
     showPopup(
     mirror
@@ -828,14 +1059,14 @@ function toggleMirror(){
 
 function beep(){
 
-    const audioCtx=
+    const audioCtx =
     new(window.AudioContext||
     window.webkitAudioContext)();
 
-    const osc=
+    const osc =
     audioCtx.createOscillator();
 
-    const gain=
+    const gain =
     audioCtx.createGain();
 
     osc.connect(gain);
@@ -864,7 +1095,8 @@ function beep(){
 function showPopup(text){
 
     const popup =
-    document.getElementById(
+    document
+    .getElementById(
     "popup"
     );
 
@@ -885,6 +1117,32 @@ function showPopup(text){
 
     },2500);
 }
+
+/* ---------- EVENTS ---------- */
+
+document
+.getElementById(
+"startBtn"
+)
+.onclick=startScanner;
+
+document
+.getElementById(
+"stopBtn"
+)
+.onclick=stopScanner;
+
+document
+.getElementById(
+"torchBtn"
+)
+.onclick=toggleTorch;
+
+document
+.getElementById(
+"mirrorBtn"
+)
+.onclick=toggleMirror;
 
 /* ---------- INIT ---------- */
 
