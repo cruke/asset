@@ -90,19 +90,19 @@ button:active{
     background:black;
 }
 
-/* hidden raw video */
+/* REAL CAMERA */
 
 #video{
-    display:none;
-}
-
-/* rendered camera */
-
-#view{
     width:100%;
     height:100%;
     object-fit:cover;
     display:block;
+
+    /* CENTER ZOOM CROP */
+
+    transform:scale(1.25);
+
+    transform-origin:center center;
 }
 
 /* ---------- OVERLAY ---------- */
@@ -330,8 +330,6 @@ Professional Asset Barcode Scanner
     <video id="video"
     playsinline></video>
 
-    <canvas id="view"></canvas>
-
     <div id="overlay">
 
         <div id="roi">
@@ -432,7 +430,7 @@ DecodeHintType
 from
 "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
 
-/* ---------- ZXING HINTS ---------- */
+/* ---------- ZXING ---------- */
 
 const hints =
 new Map();
@@ -465,12 +463,6 @@ const GAS_URL =
 const video =
 document.getElementById("video");
 
-const view =
-document.getElementById("view");
-
-const vctx =
-view.getContext("2d");
-
 const popup =
 document.getElementById("popup");
 
@@ -482,17 +474,10 @@ document.getElementById("status");
 let stream=null;
 let track=null;
 
-let vw=0;
-let vh=0;
-
-let cropY=0;
-let cropH=0;
-
-let renderRunning=false;
-let decodeRunning=false;
-
 let torch=false;
 let mirror=false;
+
+let decodeRunning=false;
 
 let lastText="";
 let lastScanTime=0;
@@ -585,7 +570,7 @@ async function startScanner(){
             }
         });
 
-        video.srcObject=
+        video.srcObject =
         stream;
 
         await video.play();
@@ -594,28 +579,9 @@ async function startScanner(){
         stream
         .getVideoTracks()[0];
 
-        vw =
-        video.videoWidth;
-
-        vh =
-        video.videoHeight;
-
-        /* BARCODE OPTIMIZED CROP */
-
-        cropY =
-        Math.floor(vh * 0.15);
-
-        cropH =
-        Math.floor(vh * 0.70);
-
-        view.width=vw;
-        view.height=cropH;
-
-        startRender();
-
         startDecode();
 
-        statusLabel.innerHTML=
+        statusLabel.innerHTML =
         "Scanner Started";
 
     }catch(err){
@@ -632,8 +598,6 @@ function stopScanner(){
 
     stopDecode();
 
-    stopRender();
-
     try{
         codeReader.reset();
     }catch(e){}
@@ -647,68 +611,8 @@ function stopScanner(){
         stream=null;
     }
 
-    statusLabel.innerHTML=
+    statusLabel.innerHTML =
     "Scanner Stopped";
-}
-
-/* ---------- RENDER ---------- */
-
-function startRender(){
-
-    if(renderRunning){
-        return;
-    }
-
-    renderRunning=true;
-
-    function loop(){
-
-        if(!renderRunning){
-            return;
-        }
-
-        requestAnimationFrame(loop);
-
-        if(!vw || !vh){
-            return;
-        }
-
-        vctx.save();
-
-        if(mirror){
-
-            vctx.translate(
-            view.width,
-            0
-            );
-
-            vctx.scale(-1,1);
-        }
-
-        vctx.drawImage(
-
-            video,
-
-            0,
-            cropY,
-            vw,
-            cropH,
-
-            0,
-            0,
-            view.width,
-            view.height
-        );
-
-        vctx.restore();
-    }
-
-    loop();
-}
-
-function stopRender(){
-
-    renderRunning=false;
 }
 
 /* ---------- DECODE ---------- */
@@ -996,6 +900,17 @@ async function toggleTorch(){
 function toggleMirror(){
 
     mirror=!mirror;
+
+    if(mirror){
+
+        video.style.transform=
+        "scale(1.25) scaleX(-1)";
+
+    }else{
+
+        video.style.transform=
+        "scale(1.25)";
+    }
 
     showPopup(
     mirror
