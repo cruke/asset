@@ -10,7 +10,7 @@ initial-scale=1.0,
 maximum-scale=1.0,
 user-scalable=no">
 
-<title>QR & Barcode Scanner</title>
+<title>Asset QR Scanner</title>
 
 <style>
 
@@ -30,7 +30,7 @@ header{
     color:#22d3ee;
 }
 
-/* ---------- CAMERA CONTAINER ---------- */
+/* ---------- CAMERA ---------- */
 
 #cameraContainer{
     position:relative;
@@ -40,14 +40,10 @@ header{
     background:black;
 }
 
-/* ---------- READER ---------- */
-
 #reader{
     width:100%;
     height:100%;
 }
-
-/* ---------- VIDEO ---------- */
 
 #reader video{
     width:100% !important;
@@ -55,7 +51,7 @@ header{
     object-fit:cover !important;
 }
 
-/* ---------- HIDE DEFAULT OVERLAY ---------- */
+/* hide default scanner overlay */
 
 #reader__scan_region img{
     display:none !important;
@@ -206,6 +202,47 @@ button:active{
     transform:scale(0.97);
 }
 
+/* ---------- STATUS ---------- */
+
+.status{
+    text-align:center;
+    padding:10px;
+    color:#22c55e;
+    font-size:16px;
+}
+
+/* ---------- RESULT ---------- */
+
+#resultBox{
+    margin:12px;
+    background:#111827;
+    border-radius:14px;
+    padding:14px;
+    display:none;
+}
+
+.resultTitle{
+    color:#22d3ee;
+    margin-bottom:10px;
+    font-weight:bold;
+    font-size:18px;
+}
+
+.resultItem{
+    margin-bottom:12px;
+    word-break:break-word;
+}
+
+.resultLabel{
+    color:#94a3b8;
+    font-size:13px;
+}
+
+.resultValue{
+    font-size:17px;
+    margin-top:3px;
+}
+
 /* ---------- POPUP ---------- */
 
 #popup{
@@ -241,14 +278,6 @@ button:active{
     word-break:break-word;
 }
 
-/* ---------- STATUS ---------- */
-
-.status{
-    text-align:center;
-    padding:10px;
-    color:#22c55e;
-}
-
 </style>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
@@ -258,7 +287,7 @@ button:active{
 <body>
 
 <header>
-QR & Barcode Scanner
+Asset QR Scanner
 </header>
 
 <div id="cameraContainer">
@@ -314,6 +343,57 @@ Waiting...
 
 </div>
 
+<!-- RESULT -->
+
+<div id="resultBox">
+
+    <div class="resultTitle">
+    Asset Information
+    </div>
+
+    <div class="resultItem">
+
+        <div class="resultLabel">
+        NO SIRI PENDAFTARAN
+        </div>
+
+        <div class="resultValue"
+        id="resultSiri">
+        -
+        </div>
+
+    </div>
+
+    <div class="resultItem">
+
+        <div class="resultLabel">
+        KETERANGAN ASET
+        </div>
+
+        <div class="resultValue"
+        id="resultAset">
+        -
+        </div>
+
+    </div>
+
+    <div class="resultItem">
+
+        <div class="resultLabel">
+        LOKASI SEMASA
+        </div>
+
+        <div class="resultValue"
+        id="resultLokasi">
+        -
+        </div>
+
+    </div>
+
+</div>
+
+<!-- HISTORY -->
+
 <div id="history">
 
 <b>Scan History</b>
@@ -322,11 +402,13 @@ Waiting...
 
 </div>
 
+<!-- POPUP -->
+
 <div id="popup"></div>
 
 <script>
 
-/* ---------- GOOGLE SHEETS ---------- */
+/* ---------- GOOGLE APPS SCRIPT ---------- */
 
 const GAS_URL =
 "https://script.google.com/macros/s/AKfycbyUEjurhn07mG8zmal7W9HUwiCer_RABw503xgpR3WDSZs8SxxsssLs2roG0x96T-G5fQ/exec";
@@ -466,7 +548,7 @@ async function startScanner(){
                     );
                 }
 
-                await sendToSheet(
+                await searchAsset(
                 decodedText
                 );
             }
@@ -500,6 +582,113 @@ async function stopScanner(){
         }
 
     }catch(e){}
+}
+
+/* ---------- SEARCH DATABASE ---------- */
+
+async function searchAsset(code){
+
+    try{
+
+        document
+        .getElementById(
+        "status"
+        ).innerHTML=
+        "Searching Database...";
+
+        const response =
+        await fetch(
+        GAS_URL,
+        {
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":
+                "text/plain"
+            },
+
+            body:JSON.stringify({
+
+                id:code
+
+            })
+        });
+
+        const data =
+        await response.json();
+
+        console.log(data);
+
+        if(data.found){
+
+            document
+            .getElementById(
+            "status"
+            ).innerHTML=
+            "Asset Found";
+
+            document
+            .getElementById(
+            "resultBox"
+            ).style.display=
+            "block";
+
+            document
+            .getElementById(
+            "resultSiri"
+            ).innerHTML=
+            data.no_siri;
+
+            document
+            .getElementById(
+            "resultAset"
+            ).innerHTML=
+            data.keterangan;
+
+            document
+            .getElementById(
+            "resultLokasi"
+            ).innerHTML=
+            data.lokasi;
+
+            showPopup(
+            "Asset Found"
+            );
+
+        }else{
+
+            document
+            .getElementById(
+            "status"
+            ).innerHTML=
+            "Asset Not Found";
+
+            document
+            .getElementById(
+            "resultBox"
+            ).style.display=
+            "none";
+
+            showPopup(
+            "Asset Not Found"
+            );
+        }
+
+    }catch(err){
+
+        console.log(err);
+
+        document
+        .getElementById(
+        "status"
+        ).innerHTML=
+        "Network Error";
+
+        showPopup(
+        "Network Error"
+        );
+    }
 }
 
 /* ---------- TORCH ---------- */
@@ -624,7 +813,7 @@ function showPopup(text){
         popup.style.display=
         "none";
 
-    },3000);
+    },2500);
 }
 
 /* ---------- HISTORY ---------- */
@@ -651,55 +840,6 @@ function addHistory(text){
     "historyList"
     )
     .prepend(div);
-}
-
-/* ---------- GOOGLE SHEETS ---------- */
-
-async function sendToSheet(code){
-
-    try{
-
-        document
-        .getElementById(
-        "status"
-        ).innerHTML=
-        "Saving...";
-
-        await fetch(
-        GAS_URL,
-        {
-
-            method:"POST",
-
-            headers:{
-                "Content-Type":
-                "text/plain"
-            },
-
-            body:JSON.stringify({
-
-                id:code,
-
-                time:new Date()
-                .toLocaleString()
-
-            })
-        });
-
-        document
-        .getElementById(
-        "status"
-        ).innerHTML=
-        "Saved";
-
-    }catch(err){
-
-        document
-        .getElementById(
-        "status"
-        ).innerHTML=
-        "Network Error";
-    }
 }
 
 /* ---------- INIT ---------- */
