@@ -19,6 +19,7 @@ body{
     background:#0f172a;
     color:white;
     font-family:Arial,sans-serif;
+    overflow-x:hidden;
 }
 
 header{
@@ -29,9 +30,74 @@ header{
     color:#22d3ee;
 }
 
+/* ---------- CROPPED CAMERA ---------- */
+
 #reader{
     width:100%;
+    height:50vh;
+    overflow:hidden;
+    position:relative;
+    background:black;
 }
+
+/* crop center only */
+
+#reader video{
+    width:100%;
+    height:100vh;
+    object-fit:cover;
+    position:absolute;
+    top:50%;
+    left:0;
+    transform:translateY(-50%);
+}
+
+/* ---------- ROI BOX ---------- */
+
+#roi{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:240px;
+    height:240px;
+    border:3px solid #22c55e;
+    border-radius:20px;
+    box-shadow:0 0 15px #22c55e;
+    pointer-events:none;
+    z-index:10;
+}
+
+/* ---------- SCAN LINE ---------- */
+
+#scanline{
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    width:240px;
+    height:3px;
+    background:#22c55e;
+    box-shadow:0 0 10px #22c55e;
+    animation:scan 2s linear infinite;
+    z-index:11;
+}
+
+@keyframes scan{
+
+    0%{
+        top:calc(50% - 120px);
+    }
+
+    50%{
+        top:calc(50% + 120px);
+    }
+
+    100%{
+        top:calc(50% - 120px);
+    }
+}
+
+/* ---------- CONTROLS ---------- */
 
 .controls{
     padding:12px;
@@ -68,6 +134,8 @@ button:active{
     transform:scale(0.97);
 }
 
+/* ---------- POPUP ---------- */
+
 #popup{
     position:fixed;
     left:50%;
@@ -86,6 +154,8 @@ button:active{
     z-index:9999;
 }
 
+/* ---------- HISTORY ---------- */
+
 #history{
     padding:12px;
 }
@@ -98,6 +168,8 @@ button:active{
     font-size:14px;
     word-break:break-word;
 }
+
+/* ---------- STATUS ---------- */
 
 .status{
     text-align:center;
@@ -117,7 +189,13 @@ button:active{
 QR & Barcode Scanner
 </header>
 
-<div id="reader"></div>
+<div id="reader">
+
+    <div id="roi"></div>
+
+    <div id="scanline"></div>
+
+</div>
 
 <div class="controls">
 
@@ -180,6 +258,7 @@ let torch=false;
 let mirror=false;
 
 let lastText="";
+let lastScanTime=0;
 
 /* ---------- LOAD CAMERAS ---------- */
 
@@ -217,8 +296,6 @@ async function loadCameras(){
         );
     });
 
-    // auto select back camera
-
     const backCam =
     devices.find(d=>
     d.label
@@ -240,7 +317,7 @@ async function loadCameras(){
 
 async function startScanner(){
 
-    stopScanner();
+    await stopScanner();
 
     currentCameraId =
     document
@@ -263,22 +340,31 @@ async function startScanner(){
                 fps:10,
 
                 qrbox:{
-                    width:250,
-                    height:250
+                    width:240,
+                    height:240
                 }
             },
 
             async(decodedText)=>{
 
+                const now =
+                Date.now();
+
+                // prevent repeated scan
+
                 if(
-                decodedText===
-                lastText
+                    decodedText === lastText &&
+                    (now - lastScanTime)
+                    < 3000
                 ){
                     return;
                 }
 
-                lastText=
+                lastText =
                 decodedText;
+
+                lastScanTime =
+                now;
 
                 showPopup(
                 decodedText
@@ -301,12 +387,6 @@ async function startScanner(){
                 await sendToSheet(
                 decodedText
                 );
-
-                setTimeout(()=>{
-
-                    lastText="";
-
-                },2000);
             }
         );
 
@@ -386,12 +466,12 @@ function toggleMirror(){
         if(mirror){
 
             video.style.transform=
-            "scaleX(-1)";
+            "translateY(-50%) scaleX(-1)";
 
         }else{
 
             video.style.transform=
-            "scaleX(1)";
+            "translateY(-50%) scaleX(1)";
         }
     }
 
