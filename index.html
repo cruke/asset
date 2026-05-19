@@ -10,7 +10,7 @@ initial-scale=1.0,
 maximum-scale=1.0,
 user-scalable=no">
 
-<title>Professional Asset Scanner</title>
+<title>Professional Barcode Asset Scanner</title>
 
 <style>
 
@@ -96,7 +96,7 @@ button:active{
     display:none;
 }
 
-/* cropped rendered camera */
+/* rendered cropped camera */
 
 #view{
     width:100%;
@@ -105,7 +105,7 @@ button:active{
     display:block;
 }
 
-/* overlay */
+/* ---------- OVERLAY ---------- */
 
 #overlay{
     position:absolute;
@@ -120,55 +120,62 @@ button:active{
     left:50%;
     top:50%;
     transform:translate(-50%,-50%);
-    width:300px;
-    height:140px;
+    width:340px;
+    height:110px;
     border:2px solid rgba(255,255,255,0.12);
     border-radius:18px;
+    z-index:10;
 }
 
-/* corners */
+/* top left */
 
 #roi::before{
     content:"";
     position:absolute;
     top:-3px;
     left:-3px;
-    width:50px;
-    height:50px;
+    width:45px;
+    height:45px;
     border-top:5px solid var(--green);
     border-left:5px solid var(--green);
     border-top-left-radius:18px;
 }
+
+/* bottom right */
 
 #roi::after{
     content:"";
     position:absolute;
     right:-3px;
     bottom:-3px;
-    width:50px;
-    height:50px;
+    width:45px;
+    height:45px;
     border-right:5px solid var(--green);
     border-bottom:5px solid var(--green);
     border-bottom-right-radius:18px;
 }
 
+/* top right */
+
 .corner1{
     position:absolute;
     top:-3px;
     right:-3px;
-    width:50px;
-    height:50px;
+    width:45px;
+    height:45px;
     border-top:5px solid var(--green);
     border-right:5px solid var(--green);
     border-top-right-radius:18px;
 }
 
+/* bottom left */
+
 .corner2{
     position:absolute;
     left:-3px;
     bottom:-3px;
-    width:50px;
-    height:50px;
+    width:45px;
+    height:45px;
     border-left:5px solid var(--green);
     border-bottom:5px solid var(--green);
     border-bottom-left-radius:18px;
@@ -181,25 +188,26 @@ button:active{
     left:50%;
     top:50%;
     transform:translateX(-50%);
-    width:280px;
+    width:320px;
     height:3px;
     background:var(--green);
     box-shadow:0 0 10px var(--green);
-    animation:scan 2s linear infinite;
+    animation:scan 1.6s linear infinite;
+    z-index:11;
 }
 
 @keyframes scan{
 
     0%{
-        margin-top:-60px;
+        margin-top:-45px;
     }
 
     50%{
-        margin-top:60px;
+        margin-top:45px;
     }
 
     100%{
-        margin-top:-60px;
+        margin-top:-45px;
     }
 }
 
@@ -281,25 +289,12 @@ button:active{
 
 </style>
 
-<script type="module">
-
-import {
-BrowserMultiFormatReader
-}
-from
-"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
-
-window.reader =
-new BrowserMultiFormatReader();
-
-</script>
-
 </head>
 
 <body>
 
 <header>
-Professional Asset Scanner
+Professional Barcode Asset Scanner
 </header>
 
 <!-- CONTROLS -->
@@ -339,17 +334,19 @@ Professional Asset Scanner
 
     <canvas id="view"></canvas>
 
-    <canvas id="overlay"></canvas>
+    <div id="overlay">
 
-    <div id="roi">
+        <div id="roi">
 
-        <div class="corner1"></div>
+            <div class="corner1"></div>
 
-        <div class="corner2"></div>
+            <div class="corner2"></div>
+
+        </div>
+
+        <div id="scanline"></div>
 
     </div>
-
-    <div id="scanline"></div>
 
 </div>
 
@@ -429,36 +426,48 @@ Scan History
 
 <script type="module">
 
+import {
+BrowserMultiFormatReader
+}
+from
+"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
+
 /* ---------- CONFIG ---------- */
 
 const GAS_URL =
 "https://script.google.com/macros/s/AKfycbyUEjurhn07mG8zmal7W9HUwiCer_RABw503xgpR3WDSZs8SxxsssLs2roG0x96T-G5fQ/exec";
 
+/* ---------- ZXING ---------- */
+
+const codeReader =
+new BrowserMultiFormatReader();
+
 /* ---------- DOM ---------- */
 
-const video=
-document.getElementById("video");
+const video =
+document.getElementById(
+"video"
+);
 
-const view=
-document.getElementById("view");
+const view =
+document.getElementById(
+"view"
+);
 
-const overlay=
-document.getElementById("overlay");
+const vctx =
+view.getContext(
+"2d"
+);
 
-const vctx=
-view.getContext("2d");
+const popup =
+document.getElementById(
+"popup"
+);
 
-const ctx=
-overlay.getContext("2d");
-
-const popup=
-document.getElementById("popup");
-
-const statusLabel=
-document.getElementById("status");
-
-const codeReader=
-window.reader;
+const statusLabel =
+document.getElementById(
+"status"
+);
 
 /* ---------- VARIABLES ---------- */
 
@@ -466,19 +475,19 @@ let stream=null;
 
 let track=null;
 
+let torch=false;
+
+let mirror=false;
+
+let decodeRunning=false;
+
+let renderRunning=false;
+
 let vw=0;
 let vh=0;
 
 let cropY=0;
 let cropH=0;
-
-let renderRunning=false;
-
-let decodeRunning=false;
-
-let torch=false;
-
-let mirror=false;
 
 let lastText="";
 let lastScanTime=0;
@@ -489,7 +498,7 @@ async function loadCameras(){
 
     try{
 
-        const temp=
+        const temp =
         await navigator
         .mediaDevices
         .getUserMedia({
@@ -499,17 +508,17 @@ async function loadCameras(){
         temp.getTracks()
         .forEach(t=>t.stop());
 
-        const devices=
+        const devices =
         await navigator
         .mediaDevices
         .enumerateDevices();
 
-        const cams=
+        const cams =
         devices.filter(d=>
         d.kind==="videoinput"
         );
 
-        const select=
+        const select =
         document.getElementById(
         "cameraSelect"
         );
@@ -518,15 +527,15 @@ async function loadCameras(){
 
         cams.forEach((cam,index)=>{
 
-            const option=
+            const option =
             document.createElement(
             "option"
             );
 
-            option.value=
+            option.value =
             cam.deviceId;
 
-            option.textContent=
+            option.textContent =
             cam.label ||
             "Camera "+(index+1);
 
@@ -551,12 +560,12 @@ async function startScanner(){
 
     try{
 
-        const deviceId=
+        const deviceId =
         document.getElementById(
         "cameraSelect"
         ).value;
 
-        stream=
+        stream =
         await navigator
         .mediaDevices
         .getUserMedia({
@@ -564,44 +573,50 @@ async function startScanner(){
             video:{
                 deviceId:{
                     exact:deviceId
-                }
+                },
+
+                width:{
+                    ideal:1920
+                },
+
+                height:{
+                    ideal:1080
+                },
+
+                focusMode:"continuous"
             }
         });
 
-        video.srcObject=
+        video.srcObject =
         stream;
 
         await video.play();
 
-        track=
-        stream
-        .getVideoTracks()[0];
+        track =
+        stream.getVideoTracks()[0];
 
-        vw=
+        vw =
         video.videoWidth;
 
-        vh=
+        vh =
         video.videoHeight;
 
         /* HEAVY CENTER CROP */
 
-        cropY=
+        cropY =
         Math.floor(vh/3);
 
-        cropH=
+        cropH =
         Math.floor(vh/3);
 
-        view.width=vw;
-        view.height=cropH;
-
-        overlay.width=vw;
-        overlay.height=cropH;
+        view.width = vw;
+        view.height = cropH;
 
         startRender();
 
         startDecode();
 
-        statusLabel.innerHTML=
+        statusLabel.innerHTML =
         "Scanner Started";
 
     }catch(err){
@@ -616,9 +631,8 @@ async function startScanner(){
 
 function stopScanner(){
 
-    stopDecode();
-
-    stopRender();
+    decodeRunning=false;
+    renderRunning=false;
 
     try{
         codeReader.reset();
@@ -633,17 +647,13 @@ function stopScanner(){
         stream=null;
     }
 
-    statusLabel.innerHTML=
+    statusLabel.innerHTML =
     "Scanner Stopped";
 }
 
 /* ---------- RENDER ---------- */
 
 function startRender(){
-
-    if(renderRunning){
-        return;
-    }
 
     renderRunning=true;
 
@@ -671,7 +681,7 @@ function startRender(){
             vctx.scale(-1,1);
         }
 
-        /* HEAVY CROPPING */
+        /* DRAW ONLY CENTER */
 
         vctx.drawImage(
 
@@ -694,14 +704,9 @@ function startRender(){
     loop();
 }
 
-function stopRender(){
+/* ---------- BARCODE OPTIMIZED DECODE ---------- */
 
-    renderRunning=false;
-}
-
-/* ---------- DECODE ---------- */
-
-function startDecode(){
+async function startDecode(){
 
     if(decodeRunning){
         return;
@@ -709,18 +714,73 @@ function startDecode(){
 
     decodeRunning=true;
 
-    codeReader
-    .decodeFromVideoDevice(
+    const scanCanvas =
+    document.createElement(
+    "canvas"
+    );
 
-        null,
+    const scanCtx =
+    scanCanvas.getContext(
+    "2d",
+    {
+        willReadFrequently:true
+    });
 
-        video,
+    async function loop(){
 
-        (result)=>{
+        if(!decodeRunning){
+            return;
+        }
 
-            if(!decodeRunning){
-                return;
-            }
+        requestAnimationFrame(loop);
+
+        try{
+
+            /* BARCODE STRIP */
+
+            const scanW =
+            Math.floor(vw * 0.82);
+
+            const scanH =
+            Math.floor(cropH * 0.24);
+
+            const sx =
+            Math.floor(
+            (vw - scanW)/2
+            );
+
+            const sy =
+            Math.floor(
+                cropY +
+                (cropH - scanH)/2
+            );
+
+            scanCanvas.width =
+            scanW;
+
+            scanCanvas.height =
+            scanH;
+
+            scanCtx.drawImage(
+
+                video,
+
+                sx,
+                sy,
+                scanW,
+                scanH,
+
+                0,
+                0,
+                scanW,
+                scanH
+            );
+
+            const result =
+            await codeReader
+            .decodeFromCanvas(
+            scanCanvas
+            );
 
             if(result){
 
@@ -728,24 +788,18 @@ function startDecode(){
                 result.text
                 );
             }
-        }
-    );
-}
 
-function stopDecode(){
+        }catch(e){}
+    }
 
-    decodeRunning=false;
-
-    try{
-        codeReader.reset();
-    }catch(e){}
+    loop();
 }
 
 /* ---------- HANDLE SCAN ---------- */
 
 async function handleScan(text){
 
-    const now=
+    const now =
     Date.now();
 
     if(
@@ -772,16 +826,16 @@ async function handleScan(text){
     await searchAsset(text);
 }
 
-/* ---------- SEARCH DATABASE ---------- */
+/* ---------- SEARCH ---------- */
 
 async function searchAsset(code){
 
     try{
 
-        statusLabel.innerHTML=
+        statusLabel.innerHTML =
         "Searching Database...";
 
-        const response=
+        const response =
         await fetch(
         GAS_URL,
         {
@@ -798,12 +852,12 @@ async function searchAsset(code){
             })
         });
 
-        const data=
+        const data =
         await response.json();
 
         if(data.found){
 
-            statusLabel.innerHTML=
+            statusLabel.innerHTML =
             "Asset Found";
 
             document
@@ -844,7 +898,7 @@ async function searchAsset(code){
 
         }else{
 
-            statusLabel.innerHTML=
+            statusLabel.innerHTML =
             "Asset Not Found";
 
             document
@@ -870,7 +924,7 @@ async function searchAsset(code){
 
         console.log(err);
 
-        statusLabel.innerHTML=
+        statusLabel.innerHTML =
         "Network Error";
 
         showPopup(
@@ -889,44 +943,44 @@ function addHistory(
     found
 ){
 
-    const div=
+    const div =
     document.createElement(
     "div"
     );
 
-    div.className=
+    div.className =
     "historyItem";
 
-    let html=
+    let html =
     "<b>"+
     new Date()
     .toLocaleString()+
     "</b><br><br>";
 
-    html+=
+    html +=
     "<b>QR:</b><br>"+
     qr+
     "<br><br>";
 
     if(found){
 
-        html+=
+        html +=
         "<b>NO SIRI:</b><br>"+
         siri+
         "<br><br>";
 
-        html+=
+        html +=
         "<b>ASET:</b><br>"+
         aset+
         "<br><br>";
 
-        html+=
+        html +=
         "<b>LOKASI:</b><br>"+
         lokasi;
 
     }else{
 
-        html+=
+        html +=
         "<span style='color:#ef4444'>Asset Not Found</span>";
     }
 
@@ -947,7 +1001,7 @@ async function toggleTorch(){
         return;
     }
 
-    const caps=
+    const caps =
     track.getCapabilities?.()
     || {};
 
@@ -993,14 +1047,14 @@ function toggleMirror(){
 
 function beep(){
 
-    const audioCtx=
+    const audioCtx =
     new(window.AudioContext||
     window.webkitAudioContext)();
 
-    const osc=
+    const osc =
     audioCtx.createOscillator();
 
-    const gain=
+    const gain =
     audioCtx.createGain();
 
     osc.connect(gain);
@@ -1046,7 +1100,7 @@ function showPopup(text){
     },2500);
 }
 
-/* ---------- EVENTS ---------- */
+/* ---------- BUTTONS ---------- */
 
 document
 .getElementById(
