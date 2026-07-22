@@ -1,1187 +1,512 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-<meta charset="UTF-8">
-
-<meta name="viewport"
-content="width=device-width,
-initial-scale=1.0,
-maximum-scale=1.0,
-user-scalable=no">
-
-<title>Portable Asset Locator</title>
-
-<style>
-
-:root{
-    --bg:#0f172a;
-    --fg:#e2e8f0;
-    --accent:#22d3ee;
-    --green:#22c55e;
-    --red:#ef4444;
-}
-
-*{
-    box-sizing:border-box;
-    -webkit-tap-highlight-color:transparent;
-}
-
-body{
-    margin:0;
-    background:var(--bg);
-    color:var(--fg);
-    font-family:Arial,sans-serif;
-    overflow-x:hidden;
-}
-
-header{
-    text-align:center;
-    padding:14px;
-    font-size:22px;
-    font-weight:bold;
-    color:var(--accent);
-}
-
-/* ---------- CONTROLS ---------- */
-
-.controls{
-    padding:12px;
-}
-
-select{
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:12px;
-    background:#111827;
-    color:white;
-    font-size:16px;
-    margin-bottom:10px;
-}
-
-.buttons{
-    display:grid;
-    grid-template-columns:
-    repeat(2,1fr);
-    gap:10px;
-}
-
-button{
-    padding:14px;
-    border:none;
-    border-radius:12px;
-    background:#111827;
-    color:white;
-    font-size:16px;
-}
-
-button:active{
-    transform:scale(0.97);
-}
-
-/* ---------- CAMERA ---------- */
-
-#cameraContainer{
-    position:relative;
-    width:100%;
-    height:34vh;
-    overflow:hidden;
-    background:black;
-}
-
-video{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-}
-
-/* ---------- OVERLAY ---------- */
-
-#overlay{
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-}
-
-/* ---------- VIEWFINDER ---------- */
-
-#viewfinder{
-
-    position:absolute;
-
-    left:50%;
-    top:50%;
-
-    transform:translate(-50%,-50%);
-
-    width:90%;
-    max-width:340px;
-
-    height:130px;
-
-    border:2px solid rgba(255,255,255,0.15);
-
-    border-radius:16px;
-
-    overflow:hidden;
-}
-
-/* corners */
-
-.corner{
-    position:absolute;
-    width:42px;
-    height:42px;
-    border-color:#22c55e;
-    border-style:solid;
-}
-
-.tl{
-    top:-2px;
-    left:-2px;
-    border-width:5px 0 0 5px;
-    border-top-left-radius:14px;
-}
-
-.tr{
-    top:-2px;
-    right:-2px;
-    border-width:5px 5px 0 0;
-    border-top-right-radius:14px;
-}
-
-.bl{
-    bottom:-2px;
-    left:-2px;
-    border-width:0 0 5px 5px;
-    border-bottom-left-radius:14px;
-}
-
-.br{
-    bottom:-2px;
-    right:-2px;
-    border-width:0 5px 5px 0;
-    border-bottom-right-radius:14px;
-}
-
-/* ---------- SCAN LINE ---------- */
-
-#scanline{
-
-    position:absolute;
-
-    left:0;
-    top:50%;
-
-    width:100%;
-    height:3px;
-
-    background:#22c55e;
-
-    box-shadow:0 0 12px #22c55e;
-
-    animation:scan 2s linear infinite;
-}
-
-@keyframes scan{
-
-    0%{
-        transform:translateY(-45px);
-    }
-
-    50%{
-        transform:translateY(45px);
-    }
-
-    100%{
-        transform:translateY(-45px);
-    }
-}
-
-/* ---------- STATUS ---------- */
-
-.status{
-    text-align:center;
-    padding:12px;
-    color:#22c55e;
-}
-
-/* ---------- RESULT ---------- */
-
-#resultBox{
-    margin:12px;
-    background:#111827;
-    border-radius:14px;
-    padding:14px;
-    display:none;
-}
-
-.resultTitle{
-    color:#22d3ee;
-    font-size:18px;
-    font-weight:bold;
-    margin-bottom:12px;
-}
-
-.resultItem{
-    margin-bottom:12px;
-}
-
-.resultLabel{
-    color:#94a3b8;
-    font-size:13px;
-}
-
-.resultValue{
-    margin-top:3px;
-    font-size:17px;
-    word-break:break-word;
-}
-
-/* ---------- HISTORY ---------- */
-
-#history{
-    padding:12px;
-}
-
-.historyItem{
-    background:#111827;
-    padding:12px;
-    border-radius:12px;
-    margin-bottom:10px;
-    border-left:4px solid #22c55e;
-    word-break:break-word;
-}
-
-/* ---------- POPUP ---------- */
-
-#popup{
-    position:fixed;
-    left:50%;
-    bottom:20px;
-    transform:translateX(-50%);
-    width:90%;
-    max-width:400px;
-    background:rgba(0,0,0,0.92);
-    border:2px solid #22c55e;
-    border-radius:14px;
-    padding:14px;
-    color:#22c55e;
-    text-align:center;
-    display:none;
-    z-index:9999;
-}
-
-</style>
-
-<script type="module">
-
-import {
-BrowserMultiFormatReader,
-BarcodeFormat,
-DecodeHintType
-}
-from
-"https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
-
-/* ---------- BARCODE SUPPORT ---------- */
-
-const hints =
-new Map();
-
-hints.set(
-
-    DecodeHintType.POSSIBLE_FORMATS,
-
-    [
-
-        BarcodeFormat.CODE_128,
-        BarcodeFormat.CODE_39,
-        BarcodeFormat.EAN_13,
-        BarcodeFormat.EAN_8,
-        BarcodeFormat.UPC_A,
-        BarcodeFormat.UPC_E,
-        BarcodeFormat.ITF,
-        BarcodeFormat.CODABAR,
-        BarcodeFormat.QR_CODE
-
-    ]
-);
-
-window.reader =
-new BrowserMultiFormatReader(
-hints);
-
-</script>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portable Asset Locator</title>
+
+    <!-- Html5Qrcode Library (Optimized for Mobile) -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+        :root {
+            --bg: #0f172a;
+            --fg: #e2e8f0;
+            --accent: #22d3ee;
+            --green: #22c55e;
+            --red: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            padding: 14px;
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        /* ---------- CONTROLS ---------- */
+
+        .controls {
+            padding: 12px;
+        }
+
+        select {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: #111827;
+            color: white;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: #111827;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        /* ---------- CAMERA ---------- */
+
+        #cameraContainer {
+            position: relative;
+            width: 100%;
+            max-height: 220px;
+            background: black;
+            border-top: 2px solid #1e293b;
+            border-bottom: 2px solid #1e293b;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #reader {
+            width: 100%;
+        }
+
+        /* Hide Html5Qrcode built-in UI text/buttons so our custom UI controls it */
+        #reader__dashboard_section, 
+        #reader__status_span,
+        #reader__scan_region img {
+            display: none !important;
+        }
+
+        #reader video {
+            width: 100% !important;
+            height: auto !important;
+            display: block;
+        }
+
+        /* ---------- STATUS ---------- */
+
+        .status {
+            text-align: center;
+            padding: 12px;
+            color: #22c55e;
+            font-weight: bold;
+            word-break: break-word;
+        }
+
+        /* ---------- RESULT ---------- */
+
+        #resultBox {
+            margin: 12px;
+            background: #111827;
+            border-radius: 14px;
+            padding: 14px;
+            display: none;
+        }
+
+        .resultTitle {
+            color: #22d3ee;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .resultItem {
+            margin-bottom: 12px;
+        }
+
+        .resultLabel {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .resultValue {
+            margin-top: 3px;
+            font-size: 17px;
+            word-break: break-word;
+        }
+
+        /* ---------- HISTORY ---------- */
+
+        #history {
+            padding: 12px;
+        }
+
+        .historyItem {
+            background: #111827;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #22c55e;
+            word-break: break-word;
+        }
+
+        /* ---------- POPUP ---------- */
+
+        #popup {
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: rgba(0,0,0,0.92);
+            border: 2px solid #22c55e;
+            border-radius: 14px;
+            padding: 14px;
+            color: #22c55e;
+            text-align: center;
+            display: none;
+            z-index: 9999;
+        }
+    </style>
 </head>
-
 <body>
 
 <header>
-Portable Asset Locator
+    Portable Asset Locator
 </header>
 
 <!-- CONTROLS -->
-
 <div class="controls">
-
-    <select id="cameraSelect"></select>
+    <select id="cameraSelect">
+        <option value="">Select Camera...</option>
+    </select>
 
     <div class="buttons">
-
-        <button id="startBtn">
-        Start
-        </button>
-
-        <button id="stopBtn">
-        Stop
-        </button>
-
-        <button id="torchBtn">
-        Torch
-        </button>
-
-        <button id="mirrorBtn">
-        Mirror
-        </button>
-
+        <button id="startBtn">Start</button>
+        <button id="stopBtn">Stop</button>
+        <button id="torchBtn">Torch</button>
+        <button id="mirrorBtn">Mirror</button>
     </div>
-
 </div>
 
-<!-- CAMERA -->
-
+<!-- CAMERA SCANNER CONTAINER -->
 <div id="cameraContainer">
-
-    <video id="video"
-    playsinline></video>
-
-    <div id="overlay">
-
-        <div id="viewfinder">
-
-            <div class="corner tl"></div>
-            <div class="corner tr"></div>
-            <div class="corner bl"></div>
-            <div class="corner br"></div>
-
-            <div id="scanline"></div>
-
-        </div>
-
-    </div>
-
+    <div id="reader"></div>
 </div>
 
 <!-- STATUS -->
-
-<div class="status"
-id="status">
-
-Waiting...
-
-</div>
+<div class="status" id="status">Tap Start to begin</div>
 
 <!-- RESULT -->
-
 <div id="resultBox">
+    <div class="resultTitle">Asset Information</div>
 
-    <div class="resultTitle">
-    Asset Information
+    <div class="resultItem">
+        <div class="resultLabel">NO SIRI PENDAFTARAN</div>
+        <div class="resultValue" id="resultSiri">-</div>
     </div>
 
     <div class="resultItem">
-
-        <div class="resultLabel">
-        NO SIRI PENDAFTARAN
-        </div>
-
-        <div class="resultValue"
-        id="resultSiri">
-        -
-        </div>
-
+        <div class="resultLabel">KETERANGAN ASET</div>
+        <div class="resultValue" id="resultAset">-</div>
     </div>
 
     <div class="resultItem">
-
-        <div class="resultLabel">
-        KETERANGAN ASET
-        </div>
-
-        <div class="resultValue"
-        id="resultAset">
-        -
-        </div>
-
+        <div class="resultLabel">LOKASI SEMASA</div>
+        <div class="resultValue" id="resultLokasi">-</div>
     </div>
-
-    <div class="resultItem">
-
-        <div class="resultLabel">
-        LOKASI SEMASA
-        </div>
-
-        <div class="resultValue"
-        id="resultLokasi">
-        -
-        </div>
-
-    </div>
-
 </div>
 
 <!-- HISTORY -->
-
 <div id="history">
-
-<h3>
-Scan History
-</h3>
-
-<div id="historyList"></div>
-
+    <h3>Scan History</h3>
+    <div id="historyList"></div>
 </div>
 
 <!-- POPUP -->
-
 <div id="popup"></div>
 
-<script type="module">
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyUEjurhn07mG8zmal7W9HUwiCer_RABw503xgpR3WDSZs8SxxsssLs2roG0x96T-G5fQ/exec";
 
-const GAS_URL =
-"https://script.google.com/macros/s/AKfycbyUEjurhn07mG8zmal7W9HUwiCer_RABw503xgpR3WDSZs8SxxsssLs2roG0x96T-G5fQ/exec";
+const statusLabel = document.getElementById("status");
+const popup = document.getElementById("popup");
+const cameraSelect = document.getElementById("cameraSelect");
 
-const video =
-document.getElementById(
-"video"
-);
-
-const reader =
-window.reader;
-
-const popup =
-document.getElementById(
-"popup"
-);
-
-const statusLabel =
-document.getElementById(
-"status"
-);
-
-let stream=null;
-
-let track=null;
-
-let torch=false;
-
-let mirror=false;
-
-let voicesLoaded=false;
-
-/* ---------- DUPLICATE BLOCK ---------- */
-
+let html5QrCode = null;
+let isScanning = false;
+let mirror = false;
 let recentScans = {};
 
-/* ---------- LOAD VOICES ---------- */
-
-function initVoices(){
-
-    return new Promise((resolve)=>{
-
-        let voices =
-        speechSynthesis.getVoices();
-
-        if(voices.length){
-
-            voicesLoaded=true;
-
-            resolve();
-
-            return;
-        }
-
-        speechSynthesis.onvoiceschanged=
-        ()=>{
-
-            voicesLoaded=true;
-
-            resolve();
-        };
-    });
-}
-
-/* ---------- TTS ---------- */
-
-async function speak(text){
-
-    try{
-
-        if(!voicesLoaded){
-
-            await initVoices();
-        }
-
-        speechSynthesis.cancel();
-
-        const utter =
-        new SpeechSynthesisUtterance(
-        text
-        );
-
-        utter.lang="en-US";
-
-        utter.rate=1;
-
-        utter.pitch=1;
-
-        utter.volume=1;
-
-        const voices =
-        speechSynthesis.getVoices();
-
-        const voice =
-        voices.find(v=>
-
-            v.lang.includes("en")
-
-        );
-
-        if(voice){
-
-            utter.voice=voice;
-        }
-
-        speechSynthesis.speak(
-        utter
-        );
-
-    }catch(err){
-
-        console.log(err);
-    }
-}
-
-/* ---------- LOAD CAMERAS ---------- */
-
-async function loadCameras(){
-
-    try{
-
-        const temp =
-        await navigator
-        .mediaDevices
-        .getUserMedia({
-            video:true
-        });
-
-        temp.getTracks()
-        .forEach(t=>t.stop());
-
-        const devices =
-        await navigator
-        .mediaDevices
-        .enumerateDevices();
-
-        const cams =
-        devices.filter(d=>
-        d.kind==="videoinput"
-        );
-
-        const select =
-        document.getElementById(
-        "cameraSelect"
-        );
-
-        select.innerHTML="";
-
-        cams.forEach((cam,index)=>{
-
-            const option =
-            document
-            .createElement(
-            "option"
-            );
-
-            option.value =
-            cam.deviceId;
-
-            option.textContent =
-            cam.label ||
-            "Camera "+(index+1);
-
-            select.appendChild(
-            option
-            );
-        });
-
-        const back =
-        cams.find(c=>
-        c.label
-        .toLowerCase()
-        .includes("back")
-        );
-
-        if(back){
-
-            select.value=
-            back.deviceId;
-        }
-
-    }catch(err){
-
-        alert(
-        "Camera permission required"
-        );
-    }
-}
-
-/* ---------- START ---------- */
-
-async function startScanner(){
-
-    stopScanner();
-
-    try{
-
-        const unlock =
-        new SpeechSynthesisUtterance(
-        " "
-        );
-
-        unlock.volume = 0;
-
-        speechSynthesis.speak(
-        unlock
-        );
-
-    }catch(e){}
-
-    try{
-
-        const deviceId =
-        document.getElementById(
-        "cameraSelect"
-        ).value;
-
-        stream =
-        await navigator
-        .mediaDevices
-        .getUserMedia({
-
-            video:{
-
-                deviceId:{
-                    exact:deviceId
-                },
-
-                width:{
-                    ideal:1920
-                },
-
-                height:{
-                    ideal:1080
-                },
-
-                focusMode:"continuous"
-
-            },
-
-            audio:false
-
-        });
-
-        video.srcObject=
-        stream;
-
-        await video.play();
-
-        track =
-        stream
-        .getVideoTracks()[0];
-
-        try{
-
-            await track
-            .applyConstraints({
-
-                advanced:[{
-
-                    focusMode:
-                    "continuous"
-
-                }]
+/* ---------- INITIALIZE CAMERAS ---------- */
+
+async function loadCameras() {
+    try {
+        const devices = await Html5Qrcode.getCameras();
+        cameraSelect.innerHTML = "";
+
+        if (devices && devices.length > 0) {
+            devices.forEach((cam, index) => {
+                const option = document.createElement("option");
+                option.value = cam.id;
+                option.textContent = cam.label || `Camera ${index + 1}`;
+                cameraSelect.appendChild(option);
             });
 
-        }catch(e){}
-
-        statusLabel.innerHTML=
-        "Scanner Started";
-
-        setTimeout(()=>{
-
-            speak(
-            "Scanner started"
+            // Default to back camera
+            const backCam = devices.find(c => 
+                c.label.toLowerCase().includes("back") || 
+                c.label.toLowerCase().includes("environment") ||
+                c.label.toLowerCase().includes("rear")
             );
 
-        },500);
+            if (backCam) {
+                cameraSelect.value = backCam.id;
+            }
 
-        reader.decodeFromVideoDevice(
+            statusLabel.style.color = "#22c55e";
+            statusLabel.innerHTML = "Camera Ready. Press Start.";
+        } else {
+            statusLabel.style.color = "#ef4444";
+            statusLabel.innerHTML = "No cameras found.";
+        }
+    } catch (err) {
+        console.error("Camera listing error:", err);
+        statusLabel.style.color = "#ef4444";
+        statusLabel.innerHTML = "Tap Start to allow camera access.";
+    }
+}
 
-            deviceId,
+/* ---------- START SCANNER ---------- */
 
-            video,
+async function startScanner() {
+    if (isScanning) await stopScanner();
 
-            (result,error)=>{
+    // Enable native hardware acceleration for faster 1D scanning on long codes
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader", {
+            experimentalFeatures: {
+                useBarCodeDetectorIfSupported: true
+            }
+        });
+    }
 
-                if(result){
+    let cameraId = cameraSelect.value;
+    
+    // Request higher resolutions so thin barcode lines remain visible to the reader
+    let cameraConfig = cameraId ? 
+        { deviceId: { exact: cameraId } } : 
+        { 
+            facingMode: "environment",
+            width: { min: 1280, ideal: 1920 },
+            height: { min: 720, ideal: 1080 }
+        };
 
-                    handleScan(
-                    result.text
-                    );
-                }
+    statusLabel.style.color = "#22c55e";
+    statusLabel.innerHTML = "Starting camera...";
+
+    const scanConfig = {
+        fps: 15,
+        aspectRatio: 2.2,
+        // Wide scan target region tailored for long 14+ character Code 128 barcodes
+        qrbox: { width: 350, height: 110 },
+        formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.QR_CODE
+        ]
+    };
+
+    try {
+        await html5QrCode.start(
+            cameraConfig,
+            scanConfig,
+            (decodedText, decodedResult) => {
+                handleScan(decodedText);
+            },
+            (errorMessage) => {
+                // Ignore frame decode errors
             }
         );
 
-    }catch(err){
+        isScanning = true;
+        statusLabel.innerHTML = "Scanning...";
 
-        console.log(err);
+        if (cameraSelect.options.length <= 1) {
+            loadCameras();
+        }
 
-        alert(err);
+    } catch (err) {
+        console.error("Start Error:", err);
+        statusLabel.style.color = "#ef4444";
+        statusLabel.innerHTML = `Camera Error: ${err.message || err}`;
     }
 }
 
-/* ---------- STOP ---------- */
+/* ---------- STOP SCANNER ---------- */
 
-function stopScanner(){
-
-    try{
-        reader.reset();
-    }catch(e){}
-
-    if(stream){
-
-        stream
-        .getTracks()
-        .forEach(t=>t.stop());
-
-        stream=null;
+async function stopScanner() {
+    if (html5QrCode && isScanning) {
+        try {
+            await html5QrCode.stop();
+            isScanning = false;
+        } catch (e) {
+            console.error(e);
+        }
     }
-
-    statusLabel.innerHTML=
-    "Scanner Stopped";
+    statusLabel.style.color = "#22c55e";
+    statusLabel.innerHTML = "Scanner Stopped";
 }
 
 /* ---------- HANDLE SCAN ---------- */
 
-async function handleScan(text){
+async function handleScan(text) {
+    const now = Date.now();
 
-    const now =
-    Date.now();
-
-    /* ---------- BLOCK REPEATED QR ---------- */
-
-    if(recentScans[text]){
-
-        const diff =
-        now - recentScans[text];
-
-        /* ignore same QR for 10 seconds */
-
-        if(diff < 10000){
-
-            console.log(
-            "Duplicate blocked:",
-            text
-            );
-
-            return;
-        }
+    // Prevent duplicate triggers within 4 seconds
+    if (recentScans[text] && (now - recentScans[text] < 4000)) {
+        return;
     }
 
-    /* save latest scan time */
-
     recentScans[text] = now;
-
-    /* cleanup old memory */
-
-    Object.keys(recentScans)
-    .forEach(key=>{
-
-        if(
-            now - recentScans[key]
-            > 30000
-        ){
-            delete recentScans[key];
-        }
-    });
-
     beep();
 
-    if(
-    navigator.vibrate
-    ){
-        navigator.vibrate(
-        [120,50,120]
-        );
+    if (navigator.vibrate) {
+        navigator.vibrate([120, 50, 120]);
     }
 
     await searchAsset(text);
 }
 
-/* ---------- SEARCH ---------- */
+/* ---------- SEARCH DATABASE ---------- */
 
-async function searchAsset(code){
+async function searchAsset(code) {
+    try {
+        statusLabel.innerHTML = `Found Code: ${code}`;
 
-    try{
-
-        statusLabel.innerHTML=
-        "Searching Database...";
-
-        speak(
-        "Scanning database"
-        );
-
-        const response =
-        await fetch(
-        GAS_URL,
-        {
-
-            method:"POST",
-
-            headers:{
-                "Content-Type":
-                "text/plain"
-            },
-
-            body:JSON.stringify({
-                id:code
-            })
+        const response = await fetch(GAS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ id: code })
         });
 
-        const data =
-        await response.json();
+        const data = await response.json();
 
-        if(data.found){
+        if (data.found) {
+            statusLabel.innerHTML = "Asset Found";
+            document.getElementById("resultBox").style.display = "block";
+            document.getElementById("resultSiri").innerHTML = data.no_siri || "-";
+            document.getElementById("resultAset").innerHTML = data.keterangan || "-";
+            document.getElementById("resultLokasi").innerHTML = data.lokasi || "-";
 
-            statusLabel.innerHTML=
-            "Asset Found";
+            addHistory(code, data.no_siri, data.keterangan, data.lokasi, true);
+            showPopup("Asset Found");
+        } else {
+            statusLabel.innerHTML = "Asset Not Found";
+            document.getElementById("resultBox").style.display = "none";
 
-            document
-            .getElementById(
-            "resultBox"
-            ).style.display=
-            "block";
-
-            document
-            .getElementById(
-            "resultSiri"
-            ).innerHTML=
-            data.no_siri;
-
-            document
-            .getElementById(
-            "resultAset"
-            ).innerHTML=
-            data.keterangan;
-
-            document
-            .getElementById(
-            "resultLokasi"
-            ).innerHTML=
-            data.lokasi;
-
-            addHistory(
-                code,
-                data.no_siri,
-                data.keterangan,
-                data.lokasi,
-                true
-            );
-
-            showPopup(
-            "Asset Found"
-            );
-
-            speak(
-
-                "Asset found. " +
-
-                "Current location is " +
-
-                data.lokasi
-            );
-
-        }else{
-
-            statusLabel.innerHTML=
-            "Asset Not Found";
-
-            document
-            .getElementById(
-            "resultBox"
-            ).style.display=
-            "none";
-
-            addHistory(
-                code,
-                "",
-                "",
-                "",
-                false
-            );
-
-            showPopup(
-            "Asset Not Found"
-            );
-
-            speak(
-            "Asset not found"
-            );
+            addHistory(code, "", "", "", false);
+            showPopup("Asset Not Found");
         }
 
-    }catch(err){
-
-        console.log(err);
-
-        statusLabel.innerHTML=
-        "Network Error";
-
-        showPopup(
-        "Network Error"
-        );
-
-        speak(
-        "Network error"
-        );
+    } catch (err) {
+        console.error("Fetch Error:", err);
+        statusLabel.style.color = "#ef4444";
+        statusLabel.innerHTML = "Network Error";
+        showPopup("Network Error");
     }
 }
 
-/* ---------- HISTORY ---------- */
+/* ---------- UTILITY FUNCTIONS ---------- */
 
-function addHistory(
-    qr,
-    siri,
-    aset,
-    lokasi,
-    found
-){
+function addHistory(qr, siri, aset, lokasi, found) {
+    const div = document.createElement("div");
+    div.className = "historyItem";
 
-    const div =
-    document
-    .createElement(
-    "div"
-    );
+    let html = `<b>${new Date().toLocaleTimeString()}</b><br>`;
+    html += `<b>Code:</b> ${qr}<br><br>`;
 
-    div.className=
-    "historyItem";
-
-    let html =
-    "<b>"+
-    new Date()
-    .toLocaleString()+
-    "</b><br><br>";
-
-    html +=
-    "<b>QR:</b><br>"+
-    qr+
-    "<br><br>";
-
-    if(found){
-
-        html +=
-        "<b>NO SIRI:</b><br>"+
-        siri+
-        "<br><br>";
-
-        html +=
-        "<b>ASET:</b><br>"+
-        aset+
-        "<br><br>";
-
-        html +=
-        "<b>LOKASI:</b><br>"+
-        lokasi;
-
-    }else{
-
-        html +=
-        "<span style='color:#ef4444'>Asset Not Found</span>";
+    if (found) {
+        html += `<b>NO SIRI:</b> ${siri}<br>`;
+        html += `<b>ASET:</b> ${aset}<br>`;
+        html += `<b>LOKASI:</b> ${lokasi}`;
+    } else {
+        html += `<span style="color:#ef4444">Asset Not Found</span>`;
     }
 
-    div.innerHTML=html;
-
-    document
-    .getElementById(
-    "historyList"
-    )
-    .prepend(div);
+    div.innerHTML = html;
+    document.getElementById("historyList").prepend(div);
 }
 
-/* ---------- TORCH ---------- */
+function toggleTorch() {
+    showPopup("Torch toggle controlled by device hardware settings");
+}
 
-async function toggleTorch(){
-
-    if(!track){
-        return;
+function toggleMirror() {
+    mirror = !mirror;
+    const video = document.querySelector("#reader video");
+    if (video) {
+        video.style.transform = mirror ? "scaleX(-1)" : "scaleX(1)";
     }
-
-    const caps =
-    track.getCapabilities?.()
-    || {};
-
-    if(!caps.torch){
-
-        alert(
-        "Torch not supported"
-        );
-
-        return;
-    }
-
-    torch=!torch;
-
-    await track
-    .applyConstraints({
-
-        advanced:[{
-            torch:torch
-        }]
-    });
-
-    showPopup(
-    torch
-    ? "Torch ON"
-    : "Torch OFF"
-    );
-
-    speak(
-    torch
-    ? "Torch on"
-    : "Torch off"
-    );
+    showPopup(mirror ? "Mirror ON" : "Mirror OFF");
 }
 
-/* ---------- MIRROR ---------- */
+function beep() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
 
-function toggleMirror(){
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
 
-    mirror=!mirror;
+        osc.frequency.value = 1200;
+        gain.gain.value = 0.2;
 
-    if(mirror){
-
-        video.style.transform=
-        "scaleX(-1)";
-
-    }else{
-
-        video.style.transform=
-        "scaleX(1)";
-    }
-
-    showPopup(
-    mirror
-    ? "Mirror ON"
-    : "Mirror OFF"
-    );
-
-    speak(
-    mirror
-    ? "Mirror on"
-    : "Mirror off"
-    );
+        osc.start();
+        setTimeout(() => {
+            osc.stop();
+            audioCtx.close();
+        }, 120);
+    } catch (e) {}
 }
 
-/* ---------- BEEP ---------- */
-
-function beep(){
-
-    const audioCtx=
-    new(window.AudioContext||
-    window.webkitAudioContext)();
-
-    const osc=
-    audioCtx.createOscillator();
-
-    const gain=
-    audioCtx.createGain();
-
-    osc.connect(gain);
-
-    gain.connect(
-        audioCtx.destination
-    );
-
-    osc.frequency.value=1200;
-
-    gain.gain.value=0.2;
-
-    osc.start();
-
-    setTimeout(()=>{
-
-        osc.stop();
-
-        audioCtx.close();
-
-    },120);
+function showPopup(text) {
+    popup.innerHTML = text;
+    popup.style.display = "block";
+    clearTimeout(popup.timer);
+    popup.timer = setTimeout(() => {
+        popup.style.display = "none";
+    }, 2500);
 }
 
-/* ---------- POPUP ---------- */
+/* ---------- BIND EVENTS ---------- */
 
-function showPopup(text){
+document.getElementById("startBtn").onclick = startScanner;
+document.getElementById("stopBtn").onclick = stopScanner;
+document.getElementById("torchBtn").onclick = toggleTorch;
+document.getElementById("mirrorBtn").onclick = toggleMirror;
 
-    popup.innerHTML=text;
-
-    popup.style.display=
-    "block";
-
-    clearTimeout(
-    popup.timer
-    );
-
-    popup.timer=
-    setTimeout(()=>{
-
-        popup.style.display=
-        "none";
-
-    },2500);
-}
-
-/* ---------- EVENTS ---------- */
-
-document
-.getElementById(
-"startBtn"
-)
-.onclick=startScanner;
-
-document
-.getElementById(
-"stopBtn"
-)
-.onclick=stopScanner;
-
-document
-.getElementById(
-"torchBtn"
-)
-.onclick=toggleTorch;
-
-document
-.getElementById(
-"mirrorBtn"
-)
-.onclick=toggleMirror;
-
-/* ---------- INIT ---------- */
-
+// Initialize camera list on load
 loadCameras();
-
 </script>
 
 </body>
