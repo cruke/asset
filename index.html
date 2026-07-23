@@ -496,7 +496,26 @@ function showPopup(text) {
     popup.timer = setTimeout(() => {
         popup.style.display = "none";
     }, 2500);
+
+    // Voice Confirmation
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US'; 
+        window.speechSynthesis.speak(utterance);
+    }
 }
+
+// --- TAMBAHAN KOD: Welcoming Speech ---
+function playWelcomeMessage() {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance("Welcome to Portable Asset Locator. System is ready.");
+        utterance.lang = 'en-US';
+        window.speechSynthesis.speak(utterance);
+    }
+}
+// ----------------------------------------
 
 /* ---------- BIND EVENTS ---------- */
 
@@ -505,8 +524,22 @@ document.getElementById("stopBtn").onclick = stopScanner;
 document.getElementById("torchBtn").onclick = toggleTorch;
 document.getElementById("mirrorBtn").onclick = toggleMirror;
 
-// Initialize camera list on load
-loadCameras();
+// Mainkan Welcoming Speech apabila page selesai dimuatkan (loaded)
+window.addEventListener("load", () => {
+    loadCameras();
+    playWelcomeMessage();
+});
+
+// Sebagai backup untuk polisi autoplay browser: Mainkan juga apabila user sentuh (click) mana-mana bahagian skrin untuk kali pertama
+let firstTouch = false;
+document.body.addEventListener('click', () => {
+    if (!firstTouch) {
+        firstTouch = true;
+        // Boleh uncomment kod di bawah jika mahu suara dimainkan sekali lagi ketika sentuhan pertama
+        // playWelcomeMessage(); 
+    }
+}, { once: true });
+
 </script>
 
 </body>
