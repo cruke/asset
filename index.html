@@ -33,9 +33,14 @@
         header {
             text-align: center;
             padding: 14px;
-            font-size: 22px;
+            font-size: 24px; 
             font-weight: bold;
-            color: var(--accent);
+            
+            /* --- REKAAN TAJUK EMAS --- */
+            color: #FFD700; 
+            -webkit-text-stroke: 1px #000000; /* Ditukar kepada warna hitam */
+            text-shadow: 0px 4px 8px rgba(255, 255, 255, 0.6); 
+            /* ------------------------- */
         }
 
         /* ---------- CONTROLS ---------- */
@@ -95,7 +100,6 @@
             width: 100%;
         }
 
-        /* Hide Html5Qrcode built-in UI text/buttons so our custom UI controls it */
         #reader__dashboard_section, 
         #reader__status_span,
         #reader__scan_region img {
@@ -253,6 +257,7 @@ let html5QrCode = null;
 let isScanning = false;
 let mirror = false;
 let recentScans = {};
+let torchOn = false; // Status Lampu Suluh Semasa
 
 /* ---------- INITIALIZE CAMERAS ---------- */
 
@@ -269,7 +274,6 @@ async function loadCameras() {
                 cameraSelect.appendChild(option);
             });
 
-            // Default to back camera
             const backCam = devices.find(c => 
                 c.label.toLowerCase().includes("back") || 
                 c.label.toLowerCase().includes("environment") ||
@@ -297,8 +301,8 @@ async function loadCameras() {
 
 async function startScanner() {
     if (isScanning) await stopScanner();
+    torchOn = false; // Reset status lampu apabila kamera mula
 
-    // Enable native hardware acceleration for faster 1D scanning on long codes
     if (!html5QrCode) {
         html5QrCode = new Html5Qrcode("reader", {
             experimentalFeatures: {
@@ -309,7 +313,6 @@ async function startScanner() {
 
     let cameraId = cameraSelect.value;
     
-    // Request higher resolutions so thin barcode lines remain visible to the reader
     let cameraConfig = cameraId ? 
         { deviceId: { exact: cameraId } } : 
         { 
@@ -324,7 +327,6 @@ async function startScanner() {
     const scanConfig = {
         fps: 15,
         aspectRatio: 2.2,
-        // Wide scan target region tailored for long 14+ character Code 128 barcodes
         qrbox: { width: 350, height: 110 },
         formatsToSupport: [
             Html5QrcodeSupportedFormats.CODE_128,
@@ -368,6 +370,7 @@ async function stopScanner() {
         try {
             await html5QrCode.stop();
             isScanning = false;
+            torchOn = false;
         } catch (e) {
             console.error(e);
         }
@@ -381,7 +384,6 @@ async function stopScanner() {
 async function handleScan(text) {
     const now = Date.now();
 
-    // Prevent duplicate triggers within 4 seconds
     if (recentScans[text] && (now - recentScans[text] < 4000)) {
         return;
     }
@@ -456,9 +458,41 @@ function addHistory(qr, siri, aset, lokasi, found) {
     document.getElementById("historyList").prepend(div);
 }
 
-function toggleTorch() {
-    showPopup("Torch toggle controlled by device hardware settings");
+// --- FUNGSI LAMPU SULUH YANG BARU DITAMBAH ---
+async function toggleTorch() {
+    if (!isScanning) {
+        showPopup("Sila tekan Start untuk buka kamera dahulu");
+        return;
+    }
+
+    try {
+        // Dapatkan elemen video yang sedang berjalan
+        const videoElement = document.querySelector("#reader video");
+        if (!videoElement || !videoElement.srcObject) {
+            showPopup("Video stream tidak ditemui");
+            return;
+        }
+
+        // Dapatkan track kamera
+        const track = videoElement.srcObject.getVideoTracks()[0];
+        const capabilities = track.getCapabilities();
+
+        // Semak jika peranti menyokong kawalan flash melalui browser
+        if (capabilities.torch) {
+            torchOn = !torchOn;
+            await track.applyConstraints({
+                advanced: [{ torch: torchOn }]
+            });
+            showPopup(torchOn ? "Torch ON" : "Torch OFF");
+        } else {
+            showPopup("Flash web tidak disokong pada peranti/pelayar ini (Guna butang manual telefon)");
+        }
+    } catch (err) {
+        console.error("Ralat Torch:", err);
+        showPopup("Gagal menghidupkan Flash. Mungkin disekat oleh OS (iOS)");
+    }
 }
+// ----------------------------------------------
 
 function toggleMirror() {
     mirror = !mirror;
@@ -506,7 +540,6 @@ function showPopup(text) {
     }
 }
 
-// --- TAMBAHAN KOD: Welcoming Speech ---
 function playWelcomeMessage() {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -515,28 +548,25 @@ function playWelcomeMessage() {
         window.speechSynthesis.speak(utterance);
     }
 }
-// ----------------------------------------
 
 /* ---------- BIND EVENTS ---------- */
 
 document.getElementById("startBtn").onclick = startScanner;
 document.getElementById("stopBtn").onclick = stopScanner;
-document.getElementById("torchBtn").onclick = toggleTorch;
+document.getElementById("torchBtn").onclick = toggleTorch; // Fungsi torch yang baru
 document.getElementById("mirrorBtn").onclick = toggleMirror;
 
-// Mainkan Welcoming Speech apabila page selesai dimuatkan (loaded)
+// Initialize camera and voice
 window.addEventListener("load", () => {
     loadCameras();
-    playWelcomeMessage();
+    playWelcomeMessage(); 
 });
 
-// Sebagai backup untuk polisi autoplay browser: Mainkan juga apabila user sentuh (click) mana-mana bahagian skrin untuk kali pertama
 let firstTouch = false;
 document.body.addEventListener('click', () => {
     if (!firstTouch) {
         firstTouch = true;
-        // Boleh uncomment kod di bawah jika mahu suara dimainkan sekali lagi ketika sentuhan pertama
-        // playWelcomeMessage(); 
+        playWelcomeMessage();
     }
 }, { once: true });
 
